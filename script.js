@@ -49,6 +49,7 @@ function renderCard(card) {
     $("kanji").textContent = "日本語";
     $("hiragana").textContent = "—";
     $("romaji").textContent = "—";
+    $("class").textContent = "—";
     $("definition").textContent = "No cards available";
     return;
   }
@@ -56,6 +57,7 @@ function renderCard(card) {
   $("kanji").textContent = card.kanji;
   $("hiragana").textContent = card.hiragana;
   $("romaji").textContent = card.romaji;
+  $("class").textContent = card.class;
   $("definition").textContent = card.definition;
 }
 
@@ -84,7 +86,7 @@ async function loadCards() {
   try {
     const { data, error } = await db
       .from("flashcards")
-      .select("id, kanji, hiragana, romaji, definition, created_at")
+      .select("id, kanji, hiragana, romaji, class, definition, created_at")
       .order("created_at", { ascending: true });
 
     if (error) throw error;
@@ -213,6 +215,7 @@ $("addForm").addEventListener("submit", async (event) => {
     kanji: $("newKanji").value.trim(),
     hiragana: $("newHiragana").value.trim(),
     romaji: $("newRomaji").value.trim(),
+    class: $("newClass").value.trim(),
     definition: $("newDefinition").value.trim()
   };
 
@@ -230,7 +233,7 @@ $("addForm").addEventListener("submit", async (event) => {
     const { data, error } = await db
       .from("flashcards")
       .insert(newCard)
-      .select("id, kanji, hiragana, romaji, definition, created_at")
+      .select("id, kanji, hiragana, romaji, class, definition, created_at")
       .single();
 
     if (error) throw error;
