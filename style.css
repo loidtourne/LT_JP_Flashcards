@@ -455,9 +455,11 @@ footer {
 .current-combo-card.active-combo {
   background: linear-gradient(
     180deg,
-    #ff9800 0%,
+    #e65100 0%,
+    #ff9800 15%,
     #ffcc80 50%,
-    #ff9800 100%
+    #ff9800 65%,
+    #e65100 100%
   );
   color: #191919;
   box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
