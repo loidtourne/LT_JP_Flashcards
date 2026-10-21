@@ -199,8 +199,9 @@ textarea {
 }
 
 .definition {
-  font-size: 21px;
-  font-weight: 600;
+  font-size: 18px;
+  padding-bottom: 15px;
+  font-weight: 500;
 }
 
 .answer-divider {
