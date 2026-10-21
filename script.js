@@ -122,7 +122,9 @@ async function loadCards() {
 
 async function loadDailyHistory() {
   if (!currentUser) {
-    $("currentStreak").textContent = "0 days";
+    const currentStreakElement = $("currentStreak");
+    currentStreakElement.textContent = "🔥 0 days";
+    currentStreakElement.classList.remove("active-combo");
     $("bestStreak").textContent = "0 days";
     renderMilestones(0);
     return;
@@ -143,8 +145,10 @@ async function loadDailyHistory() {
   const { currentStreak, bestStreak } =
     calculateStreaks(history);
 
-  $("currentStreak").textContent =
-    `${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+  const currentStreakElement = $("currentStreak");
+  currentStreakElement.textContent =
+    `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+  currentStreakElement.classList.toggle("active-combo", currentStreak > 0);
 
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
@@ -273,7 +277,7 @@ $("addForm").addEventListener("submit", async (event) => {
   };
 
   if (Object.values(newCard).some(value => !value)) {
-    setMessage("saveMessage", "Please complete all four fields.", true);
+    setMessage("saveMessage", "Please complete all six fields.", true);
     return;
   }
 
@@ -362,8 +366,6 @@ function getTodayKey() {
 }
 
 // Restore today's saved blips
-
-
 function restoreBlips() {
   let saved = {};
 
@@ -384,25 +386,16 @@ function restoreBlips() {
   if (saved.date !== getTodayKey()) {
     localStorage.setItem(
       BLIP_STORAGE_KEY,
-      JSON.stringify({
-        date: getTodayKey(),
-        colors: []
-      })
+      JSON.stringify({ date: getTodayKey(), colors: [] })
     );
-
     updateBlipLabel();
     return;
   }
 
-  const colors = Array.isArray(saved.colors)
-    ? saved.colors
-    : [];
+  const colors = Array.isArray(saved.colors) ? saved.colors : [];
 
   for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
-    if (colors[i] !== "green" && colors[i] !== "red") {
-      break;
-    }
-
+    if (colors[i] !== "green" && colors[i] !== "red") break;
     blips[i].classList.add(colors[i]);
     blipIndex++;
   }
@@ -410,40 +403,21 @@ function restoreBlips() {
   updateBlipLabel();
 }
 
-
-  
 function getDateOffset(dateString, offset) {
   const date = new Date(`${dateString}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
 
-function formatStudyDate(dateString) {
-  // Use midday to avoid shifting dates because of timezone offsets.
-  return new Date(`${dateString}T12:00:00`).toLocaleDateString(
-    undefined,
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    }
-  );
-}
-
 function calculateStreaks(history) {
-  const byDate = new Map(
-    history.map(day => [day.study_date, day])
-  );
-
+  const byDate = new Map(history.map(day => [day.study_date, day]));
   const today = getTodayKey();
   const todayRecord = byDate.get(today);
 
-  // A completed, non-qualifying day breaks the current combo.
   let currentStreak = 0;
   let cursor = today;
 
   if (!todayRecord) {
-    // If today isn't completed yet, continue from yesterday.
     cursor = getDateOffset(today, -1);
   } else if (!todayRecord.qualifies) {
     cursor = null;
@@ -454,7 +428,6 @@ function calculateStreaks(history) {
     cursor = getDateOffset(cursor, -1);
   }
 
-  // Calculate the best-ever streak across all saved dates.
   const sorted = [...history].sort((a, b) =>
     a.study_date.localeCompare(b.study_date)
   );
@@ -470,10 +443,7 @@ function calculateStreaks(history) {
       continue;
     }
 
-    if (
-      previousDate &&
-      getDateOffset(previousDate, 1) === day.study_date
-    ) {
+    if (previousDate && getDateOffset(previousDate, 1) === day.study_date) {
       running++;
     } else {
       running = 1;
@@ -486,49 +456,9 @@ function calculateStreaks(history) {
   return { currentStreak, bestStreak };
 }
 
-function renderDailyHistory(history) {
-  const list = $("dailyHistory");
-  list.replaceChildren();
-
-  if (history.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "No completed study days yet.";
-    list.appendChild(item);
-    return;
-  }
-
-  // Most recent days first.
-  history.slice(0, 30).forEach(day => {
-    const item = document.createElement("li");
-
-    const dateBlock = document.createElement("div");
-    dateBlock.className = "history-date";
-
-    const date = document.createElement("strong");
-    date.textContent = formatStudyDate(day.study_date);
-
-    const detail = document.createElement("small");
-    detail.textContent = day.qualifies
-      ? "Streak day earned"
-      : "Streak broken";
-
-    dateBlock.append(date, detail);
-
-    const score = document.createElement("span");
-    score.className = "history-score " +
-      (day.qualifies ? "history-qualified" : "history-failed");
-    score.textContent = `${day.green_count}/5 green`;
-
-    item.append(dateBlock, score);
-    list.appendChild(item);
-  });
-}
-
-
 function renderMilestones(bestStreak) {
-  const milestones = [3, 7, 14, 30, 45, 60];
+  const milestones = [3, 7, 14, 30];
   const container = $("streakMilestones");
-
   container.replaceChildren();
 
   const highestMilestone = milestones
@@ -541,55 +471,13 @@ function renderMilestones(bestStreak) {
   }
 
   container.hidden = false;
-
   const badge = document.createElement("span");
   badge.className = "unlocked";
   badge.textContent = `🔥 ${highestMilestone}-day milestone`;
-
   container.appendChild(badge);
 }
 
-async function loadDailyHistory() {
-  if (!currentUser) {
-    $("currentStreak").textContent = "0 days";
-    $("bestStreak").textContent = "0 days";
-    renderMilestones(0);
-    return;
-  }
-
-  const { data, error } = await db
-    .from("daily_blip_history")
-    .select("study_date, green_count, qualifies")
-    .eq("user_id", currentUser.id)
-    .order("study_date", { ascending: false });
-
-  if (error) {
-    console.error("Could not load daily history:", error);
-    return;
-  }
-
-  const history = data || [];
-
-  const { currentStreak, bestStreak } =
-    calculateStreaks(history);
-
-  $("currentStreak").textContent =
-    `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
-
-  currentStreakElement.classList.toggle(
-  "active-combo",
-  currentStreak > 0
-);
-
-  $("bestStreak").textContent =
-    `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
-
-  renderMilestones(bestStreak);
-}
-
-
 async function saveDailyResultIfComplete(refreshHistory = true) {
-  // Do not save partial study sessions.
   const colors = Array.from(blips).map(blip => {
     if (blip.classList.contains("green")) return "green";
     if (blip.classList.contains("red")) return "red";
@@ -602,8 +490,7 @@ async function saveDailyResultIfComplete(refreshHistory = true) {
   if (!allFilled) return;
 
   if (!currentUser) {
-    $("streakMessage").textContent =
-      "Today's blips are complete. Sign in to save the score to your history.";
+    console.info("Today's blips are complete. Sign in to sync the score across devices.");
     return;
   }
 
@@ -626,14 +513,10 @@ async function saveDailyResultIfComplete(refreshHistory = true) {
 
   if (error) {
     console.error("Could not save daily result:", error);
-    $("streakMessage").textContent =
-      "Today's score couldn't be saved. Check your connection and try again.";
     return;
   }
 
-  if (refreshHistory) {
-    await loadDailyHistory();
-  }
+  if (refreshHistory) await loadDailyHistory();
 }
 
 
