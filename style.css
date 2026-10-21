@@ -35,6 +35,13 @@
   margin: 0;
 }
 
+.class {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.1;
+  margin: 0;
+}
+
 .definition {
   font-size: 11px; /* Smaller definition */
   font-weight: 400;
