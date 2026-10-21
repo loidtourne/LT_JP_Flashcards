@@ -274,3 +274,78 @@ footer {
     transition: none;
   }
 }
+
+.blip-tracker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.blips {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.blip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #666;
+  background: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.blip.green {
+  background: #35c76f;
+  border-color: #35c76f;
+}
+
+.blip.red {
+  background: #ef5350;
+  border-color: #ef5350;
+}
+
+.blip-buttons {
+  display: flex;
+  gap: 16px;
+}
+
+.blip-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 23px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.blip-button:hover {
+  transform: scale(1.1);
+}
+
+.blip-button.correct {
+  color: #35c76f;
+  border: 2px solid #35c76f;
+}
+
+.blip-button.correct:hover {
+  background: #35c76f22;
+}
+
+.blip-button.incorrect {
+  color: #ef5350;
+  border: 2px solid #ef5350;
+}
+
+.blip-button.incorrect:hover {
+  background: #ef535022;
+}
+
