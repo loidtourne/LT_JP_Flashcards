@@ -200,14 +200,27 @@ textarea {
   font-size: 17px;
 }
 
+.class{
+  font-size: 14px;
+  font-style: italic;
+  color: DarkBlue;
+}
+
+.english{
+  font-size:18px;
+  font-weight:200;
+}
+
 .definition {
   font-size: 16px;
   font-weight: 400;
 }
 
+
 .card-back .hiragana,
 .card-back .romaji,
 .card-back .class,
+.card-back .english,
 .card-back .definition {
   margin: 0;
   padding: 0;
@@ -218,7 +231,8 @@ textarea {
 }
 
 .card-back .romaji,
-.card-back .class {
+.card-back .class,
+.card-back .english{
   line-height: 1.2;
 }
 
