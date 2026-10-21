@@ -576,6 +576,11 @@ async function loadDailyHistory() {
   $("currentStreak").textContent =
     `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
 
+  currentStreakElement.classList.toggle(
+  "active-combo",
+  currentStreak > 0
+);
+
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
 
