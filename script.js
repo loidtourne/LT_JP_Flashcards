@@ -117,6 +117,9 @@ async function loadCards() {
   }
 }
 
+console.log("Flashcard data from Supabase:", data);
+console.log("English field:", data?.[0]?.english);
+
 async function syncSession(session) {
   currentUser = session?.user || null;
 
