@@ -391,7 +391,7 @@ function launchConfetti() {
     "#ff8fab"
   ];
 
-  const pieceCount = 120;
+  const pieceCount = 500;
 
   for (let i = 0; i < pieceCount; i++) {
     const piece = document.createElement("div");
