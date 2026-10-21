@@ -149,6 +149,8 @@ async function loadDailyHistory() {
   currentStreakElement.textContent =
     `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
   currentStreakElement.classList.toggle("active-combo", currentStreak > 0);
+  currentStreakElement.closest(".current-combo-card")
+  .classList.toggle("active-combo", currentStreak > 0);
 
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
