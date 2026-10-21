@@ -424,6 +424,35 @@ footer {
   padding: 6px 10px;
 }
 
+.current-combo-card {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.current-combo-card.active-combo {
+  background: linear-gradient(
+    135deg,
+    #ffcc80 0%,
+    #ff9800 50%,
+    #e65100 100%
+  );
+  color: #191919;
+}
+
+/* Make sure the label and streak count use readable colors */
+.current-combo-card .streak-label,
+.current-combo-card #currentStreak {
+  color: #191919;
+  background: transparent;
+}
+
+/* Remove the old orange background on the number itself */
+#currentStreak.active-combo {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
 .streak-summary > div {
   display: flex;
   flex-direction: column;
