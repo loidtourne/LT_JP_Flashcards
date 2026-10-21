@@ -380,6 +380,49 @@ function updateBlipLabel() {
   );
 }
 
+
+function launchConfetti() {
+  const colors = [
+    "#ff6b6b",
+    "#ffd166",
+    "#06d6a0",
+    "#4dabf7",
+    "#c77dff",
+    "#ff8fab"
+  ];
+
+  const pieceCount = 120;
+
+  for (let i = 0; i < pieceCount; i++) {
+    const piece = document.createElement("div");
+
+    piece.className = "confetti-piece";
+    piece.style.left = `${Math.random() * 100}vw`;
+    piece.style.backgroundColor =
+      colors[Math.floor(Math.random() * colors.length)];
+
+    piece.style.setProperty(
+      "--drift",
+      `${Math.random() * 240 - 120}px`
+    );
+
+    piece.style.setProperty(
+      "--rotation",
+      `${Math.random() * 1440 - 720}deg`
+    );
+
+    piece.style.animationDelay = `${Math.random() * 0.8}s`;
+
+    document.body.appendChild(piece);
+
+    // Remove the element after its animation finishes.
+    setTimeout(() => {
+      piece.remove();
+    }, 4000);
+  }
+}
+
+
 // Mark the next empty blip and save it
 function markBlip(color) {
   if (blipIndex >= blips.length) return;
@@ -402,7 +445,22 @@ function markBlip(color) {
   );
 
   updateBlipLabel();
+
+  // Celebrate only when all blips are filled
+  // and at least 3 of them are green.
+  const allBlipsFilled = colors.every(
+    color => color === "green" || color === "red"
+  );
+
+  const greenCount = colors.filter(
+    color => color === "green"
+  ).length;
+
+  if (allBlipsFilled && greenCount >= 3) {
+    launchConfetti();
+  }
 }
+
 
 correctButton.addEventListener("click", () => {
   markBlip("green");
