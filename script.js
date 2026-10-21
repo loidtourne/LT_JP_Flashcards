@@ -298,23 +298,85 @@ async function startApp() {
 }
 
 
+
 const blips = document.querySelectorAll(".blip");
 const blipContainer = document.getElementById("blips");
 const correctButton = document.getElementById("correctButton");
 const incorrectButton = document.getElementById("incorrectButton");
 
+const BLIP_STORAGE_KEY = "japaneseFlashcardBlips";
+
 let blipIndex = 0;
 
+// Get today's local date, such as 2026-10-20
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// Restore today's saved blips
+function restoreBlips() {
+  const saved = JSON.parse(
+    localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
+  );
+
+  // Start fresh if the saved date is not today
+  if (saved.date !== getTodayKey()) {
+    localStorage.setItem(
+      BLIP_STORAGE_KEY,
+      JSON.stringify({ date: getTodayKey(), colors: [] })
+    );
+    return;
+  }
+
+  const colors = Array.isArray(saved.colors)
+    ? saved.colors
+    : [];
+
+  colors.slice(0, blips.length).forEach((color, index) => {
+    if (color === "green" || color === "red") {
+      blips[index].classList.add(color);
+      blipIndex = index + 1;
+    }
+  });
+
+  updateBlipLabel();
+}
+
+// Update the progress label
+function updateBlipLabel() {
+  blipContainer.setAttribute(
+    "aria-label",
+    `Progress: ${blipIndex} of ${blips.length}`
+  );
+}
+
+// Mark the next empty blip and save it
 function markBlip(color) {
   if (blipIndex >= blips.length) return;
 
   blips[blipIndex].classList.add(color);
   blipIndex++;
 
-  blipContainer.setAttribute(
-    "aria-label",
-    `Progress: ${blipIndex} of ${blips.length}`
+  const colors = Array.from(blips).map(blip => {
+    if (blip.classList.contains("green")) return "green";
+    if (blip.classList.contains("red")) return "red";
+    return null;
+  });
+
+  localStorage.setItem(
+    BLIP_STORAGE_KEY,
+    JSON.stringify({
+      date: getTodayKey(),
+      colors: colors
+    })
   );
+
+  updateBlipLabel();
 }
 
 correctButton.addEventListener("click", () => {
@@ -325,5 +387,7 @@ incorrectButton.addEventListener("click", () => {
   markBlip("red");
 });
 
+// Restore saved progress when the app loads
+restoreBlips();
 
 startApp();
