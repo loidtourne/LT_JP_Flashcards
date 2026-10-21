@@ -1,519 +1,117 @@
 
-:root {
-  color-scheme: dark;
-  --background: #191919;
-  --surface: #222222;
-  --surface-raised: #292929;
-  --border: #3b3b3b;
-  --text: #f0f0f0;
-  --muted: #a6a6a6;
-  --accent: #d7b98e;
-}
+/* ==============================
+   STUDY STREAK PANEL
+   ============================== */
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-}
-
-button, input, textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:focus-visible, input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-button:disabled {
-  opacity: 0.55;
-  cursor: wait;
-}
-
-.app {
-  width: min(100% - 28px, 560px);
-  margin: 0 auto;
-  padding: 26px 0;
-}
-
-.topbar, .card-count, footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.topbar {
-  margin-bottom: 26px;
-}
-
-.eyebrow, .face-label, .card-count {
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.13em;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-}
-
-h1 {
-  font-size: 27px;
-  margin: 0;
-  font-weight: 650;
-}
-
-h2 {
-  font-size: 19px;
-  margin: 0 0 10px;
-}
-
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 20px;
-}
-
-.panel > p {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-label {
-  display: block;
-  font-size: 13px;
-  margin: 14px 0 6px;
-}
-
-input, textarea {
-  width: 100%;
-  padding: 12px;
-  color: var(--text);
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-textarea {
-  min-height: 80px;
-  resize: vertical;
-}
-
-.primary, .secondary, .subtle-button {
-  border-radius: 9px;
-  padding: 12px 16px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.primary {
-  background: var(--accent);
-  color: #211b13;
-}
-
-.secondary, .subtle-button {
-  background: var(--surface-raised);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.full-width {
-  width: 100%;
-  margin-top: 12px;
-}
-
-.study {
-  perspective: 1200px;
-}
-
-.card-count {
-  margin-bottom: 12px;
-  letter-spacing: 0.07em;
-}
-
-.flashcard {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 285px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: transparent;
-  color: var(--text);
-  transform-style: preserve-3d;
-  transition: transform 0.55s ease;
-  text-align: center;
-}
-
-.flashcard.flipped {
-  transform: rotateY(180deg);
-}
-
-.card-face {
-  position: absolute;
-  inset: 0;
+.streak-panel {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
+  gap: 16px;
+  padding: 20px;
   border-radius: 18px;
   background: var(--surface);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  color: var(--text);
+}
+
+/* Panel heading */
+#streakHeading {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Current Combo and Best Combo layout */
+.streak-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* Shared styles for both combo sections */
+.streak-summary > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--background, #191919);
+  transition:
+    background 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Labels */
+.streak-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+/* Streak numbers */
+.streak-summary strong {
+  display: inline-block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
-.card-back {
-  transform: rotateY(180deg);
-  background: var(--surface-raised);
-  gap: 3px;
-  padding: 12px 20px;
-}
+/* ==============================
+   CURRENT COMBO GRADIENT
+   ============================== */
 
-.kanji {
-  font-size: clamp(48px, 13vw, 76px);
-  line-height: 1.2;
-}
-
-.hiragana {
-  font-size: clamp(32px, 8vw, 45px);
-}
-
-.romaji {
-  color: var(--muted);
-  font-size: 17px;
-}
-
-.class{
-  font-size: 14px;
-  font-style: italic;
-  color: CornflowerBlue;
-}
-
-.english{
-  font-size:18px;
-  font-weight:200;
-}
-
-.definition {
-  font-size: 16px;
-  font-weight: 400;
-}
-
-
-.card-back .hiragana,
-.card-back .romaji,
-.card-back .class,
-.card-back .english,
-.card-back .definition {
-  margin: 0;
-  padding: 0;
-}
-
-.card-back .hiragana {
-  line-height: 1.1;
-}
-
-.card-back .romaji,
-.card-back .class,
-.card-back .english{
-  line-height: 1.2;
-}
-
-.card-back .definition {
-  font-size: 16px;
-  line-height: 1.2;
-}
-
-.answer-divider {
-  width: 42px;
-  height: 1px;
-  background: var(--border);
-}
-
-.hint {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.message {
-  min-height: 20px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-footer {
-  color: var(--muted);
-  font-size: 11px;
-  margin-top: 25px;
-}
-
-[hidden] {
-  display: none !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .flashcard {
-    transition: none;
-  }
-}
-
-.blip-tracker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  margin: 18px 0;
-}
-
-.blips {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.blip {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid #666;
-  background: transparent;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.blip.green {
-  background: #35c76f;
-  border-color: #35c76f;
-}
-
-.blip.red {
-  background: #ef5350;
-  border-color: #ef5350;
-}
-
-.blip-buttons {
-  display: flex;
-  gap: 16px;
-}
-
-.blip-button {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: transparent;
-  font-size: 23px;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s, background 0.15s;
-}
-
-.blip-button:hover {
-  transform: scale(1.1);
-}
-
-.blip-button.correct {
-  color: #35c76f;
-  border: 2px solid #35c76f;
-}
-
-.blip-button.correct:hover {
-  background: #35c76f22;
-}
-
-.blip-button.incorrect {
-  color: #ef5350;
-  border: 2px solid #ef5350;
-}
-
-.blip-button.incorrect:hover {
-  background: #ef535022;
-}
-
-.reset-blips-button {
-  padding: 6px 14px;
-  border: 1px solid #888;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text, inherit);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
-}
-
-.reset-blips-button:hover {
-  background: #88888822;
-  transform: scale(1.03);
-}
-
-
-/* Confetti celebration */
-.confetti-piece {
-  position: fixed;
-  top: -20px;
-  width: 10px;
-  height: 16px;
-  z-index: 9999;
-  pointer-events: none;
-  animation: confetti-fall 5s ease-in forwards;
-}
-
-@keyframes confetti-fall {
-  0% {
-    transform: translate3d(0, -10px, 0) rotate(0deg);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate3d(var(--drift), 105vh, 0)
-      rotate(var(--rotation));
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .confetti-piece {
-    animation-duration: 2s;
-  }
-}
-
-
-.streak-panel {
-  margin-top: 20px;
-  padding: 18px;
-  border: 1px solid var(--border, #333);
-  border-radius: 18px;
-  background: var(--surface, #202020);
-}
-
-.streak-panel h2,
-.streak-panel h3 {
-  margin-top: 0;
-}
-
-.streak-summary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 16px 0;
-}
-
-#currentStreak.active-combo {
-  background-color: #ff9800;
-  color: #191919;
-  border-radius: 8px;
-  padding: 6px 10px;
-}
-
-.current-combo-card {
-  background: var(--surface);
-  color: var(--text);
-}
-
+/* Orange gradient when the streak is active */
 .current-combo-card.active-combo {
   background: linear-gradient(
     135deg,
     #ffcc80 0%,
-    #ff9800 50%,
+    #ffab40 30%,
+    #ff9800 65%,
     #e65100 100%
   );
+
   color: #191919;
+
+  box-shadow:
+    0 4px 12px rgba(255, 152, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Make sure the label and streak count use readable colors */
-.current-combo-card .streak-label,
+/* Ensure the label remains readable */
+.current-combo-card.active-combo .streak-label {
+  color: #191919;
+  opacity: 0.85;
+}
+
+/* Ensure the streak number does not have its own background */
 .current-combo-card #currentStreak {
-  color: #191919;
-  background: transparent;
-}
-
-/* Remove the old orange background on the number itself */
-#currentStreak.active-combo {
-  background: transparent;
   padding: 0;
   border-radius: 0;
+  background: transparent;
+  color: inherit;
 }
 
-.streak-summary > div {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border-radius: 12px;
+/* Inactive Current Combo remains neutral */
+.current-combo-card:not(.active-combo) {
   background: var(--background, #191919);
+  color: var(--text);
 }
 
-.streak-label {
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: var(--muted, #aaa);
+/* ==============================
+   BEST COMBO
+   ============================== */
+
+#bestStreak {
+  color: var(--text);
 }
 
-.streak-summary strong {
-  font-size: 24px;
-}
-
-.daily-history {
-  list-style: none;
-  margin: 0 0 20px;
-  padding: 0;
-}
-
-.daily-history li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border, #333);
-}
-
-.daily-history li:last-child {
-  border-bottom: 0;
-}
-
-.history-date {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.history-date small {
-  color: var(--muted, #aaa);
-}
-
-.history-score {
-  text-align: right;
-  white-space: nowrap;
-  font-weight: 600;
-}
-
-.history-qualified {
-  color: #4ade80;
-}
-
-.history-failed {
-  color: #ff8585;
-}
+/* ==============================
+   MILESTONE BADGE
+   ============================== */
 
 .streak-milestones {
   display: flex;
@@ -521,17 +119,46 @@ footer {
   gap: 8px;
 }
 
-.streak-milestones span {
-  padding: 7px 10px;
+.streak-milestones[hidden] {
+  display: none;
+}
+
+.streak-milestones .unlocked {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
   border-radius: 999px;
-  background: var(--background, #191919);
-  border: 1px solid var(--border, #333);
-  color: var(--muted, #aaa);
-  font-size: 12px;
+  background: rgba(255, 152, 0, 0.15);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  color: #ffab40;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
-.streak-milestones span.unlocked {
-  color: #4ade80;
-  border-color: #4ade80;
-}
+/* ==============================
+   MOBILE LAYOUT
+   ============================== */
 
+@media (max-width: 480px) {
+  .streak-panel {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .streak-summary {
+    gap: 8px;
+  }
+
+  .streak-summary > div {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .streak-summary strong {
+    font-size: 1.2rem;
+  }
+
+  .streak-label {
+    font-size: 0.65rem;
+  }
+}
