@@ -393,7 +393,7 @@ function launchConfetti() {
   ];
 
   const pieceCount = 400;
-  const spawnInterval = 20; // Milliseconds between pieces
+  const spawnInterval = 15; // Milliseconds between pieces
 
   for (let i = 0; i < pieceCount; i++) {
     setTimeout(() => {
