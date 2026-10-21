@@ -41,11 +41,14 @@ function updateInterface() {
 }
 
 function renderCard(card) {
+  const wasFlipped = flashcard.classList.contains("flipped");
+
   currentCard = card;
-  flashcard.classList.remove("flipped");
-  flashcard.setAttribute("aria-pressed", "false");
 
   if (!card) {
+    flashcard.classList.remove("flipped");
+    flashcard.setAttribute("aria-pressed", "false");
+
     $("kanji").textContent = "日本語";
     $("hiragana").textContent = "—";
     $("romaji").textContent = "—";
@@ -59,6 +62,10 @@ function renderCard(card) {
   $("romaji").textContent = card.romaji;
   $("class").textContent = card.class;
   $("definition").textContent = card.definition;
+
+  // Preserve the card's current side.
+  flashcard.classList.toggle("flipped", wasFlipped);
+  flashcard.setAttribute("aria-pressed", String(wasFlipped));
 }
 
 function chooseRandomCard() {
