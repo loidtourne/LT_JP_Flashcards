@@ -418,7 +418,7 @@ function launchConfetti() {
     // Remove the element after its animation finishes.
     setTimeout(() => {
       piece.remove();
-    }, 4000);
+    }, 6000);
   }
 }
 
