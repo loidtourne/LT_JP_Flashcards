@@ -119,11 +119,10 @@ async function loadCards() {
   }
 }
 
+
 async function syncSession(session) {
   currentUser = session?.user || null;
 
-  // This only controls the interface. Database RLS is the
-  // actual security boundary.
   isOwner = Boolean(
     currentUser?.email &&
     currentUser.email.toLowerCase() === OWNER_EMAIL.toLowerCase()
@@ -131,7 +130,16 @@ async function syncSession(session) {
 
   $("loginPanel").hidden = true;
   updateInterface();
+
+  if (currentUser) {
+    // Load history first, then save today's result if it is complete.
+    await loadDailyHistory();
+    await saveDailyResultIfComplete();
+  } else {
+    await loadDailyHistory();
+  }
 }
+
 
 flashcard.addEventListener("click", () => {
   if (!currentCard) return;
@@ -354,6 +362,234 @@ function restoreBlips() {
     return;
   }
 
+  
+function getDateOffset(dateString, offset) {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatStudyDate(dateString) {
+  // Use midday to avoid shifting dates because of timezone offsets.
+  return new Date(`${dateString}T12:00:00`).toLocaleDateString(
+    undefined,
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    }
+  );
+}
+
+function calculateStreaks(history) {
+  const byDate = new Map(
+    history.map(day => [day.study_date, day])
+  );
+
+  const today = getTodayKey();
+  const todayRecord = byDate.get(today);
+
+  // A completed, non-qualifying day breaks the current combo.
+  let currentStreak = 0;
+  let cursor = today;
+
+  if (!todayRecord) {
+    // If today isn't completed yet, continue from yesterday.
+    cursor = getDateOffset(today, -1);
+  } else if (!todayRecord.qualifies) {
+    cursor = null;
+  }
+
+  while (cursor && byDate.get(cursor)?.qualifies) {
+    currentStreak++;
+    cursor = getDateOffset(cursor, -1);
+  }
+
+  // Calculate the best-ever streak across all saved dates.
+  const sorted = [...history].sort((a, b) =>
+    a.study_date.localeCompare(b.study_date)
+  );
+
+  let running = 0;
+  let bestStreak = 0;
+  let previousDate = null;
+
+  for (const day of sorted) {
+    if (!day.qualifies) {
+      running = 0;
+      previousDate = day.study_date;
+      continue;
+    }
+
+    if (
+      previousDate &&
+      getDateOffset(previousDate, 1) === day.study_date
+    ) {
+      running++;
+    } else {
+      running = 1;
+    }
+
+    bestStreak = Math.max(bestStreak, running);
+    previousDate = day.study_date;
+  }
+
+  return { currentStreak, bestStreak };
+}
+
+function renderDailyHistory(history) {
+  const list = $("dailyHistory");
+  list.replaceChildren();
+
+  if (history.length === 0) {
+    const item = document.createElement("li");
+    item.textContent = "No completed study days yet.";
+    list.appendChild(item);
+    return;
+  }
+
+  // Most recent days first.
+  history.slice(0, 30).forEach(day => {
+    const item = document.createElement("li");
+
+    const dateBlock = document.createElement("div");
+    dateBlock.className = "history-date";
+
+    const date = document.createElement("strong");
+    date.textContent = formatStudyDate(day.study_date);
+
+    const detail = document.createElement("small");
+    detail.textContent = day.qualifies
+      ? "Streak day earned"
+      : "Streak broken";
+
+    dateBlock.append(date, detail);
+
+    const score = document.createElement("span");
+    score.className = "history-score " +
+      (day.qualifies ? "history-qualified" : "history-failed");
+    score.textContent = `${day.green_count}/5 green`;
+
+    item.append(dateBlock, score);
+    list.appendChild(item);
+  });
+}
+
+function renderMilestones(bestStreak) {
+  const milestones = [3, 7, 14, 30];
+  const container = $("streakMilestones");
+  container.replaceChildren();
+
+  milestones.forEach(target => {
+    const badge = document.createElement("span");
+    badge.textContent = bestStreak >= target
+      ? `✓ ${target}-day milestone`
+      : `${target}-day milestone`;
+
+    if (bestStreak >= target) {
+      badge.classList.add("unlocked");
+    }
+
+    container.appendChild(badge);
+  });
+}
+
+async function loadDailyHistory() {
+  if (!currentUser) {
+    $("currentStreak").textContent = "0 days";
+    $("bestStreak").textContent = "0 days";
+    $("streakMessage").textContent =
+      "Sign in to sync your study history across devices.";
+    $("dailyHistory").replaceChildren();
+
+    const item = document.createElement("li");
+    item.textContent = "Sign in to view saved daily scores.";
+    $("dailyHistory").appendChild(item);
+
+    renderMilestones(0);
+    return;
+  }
+
+  const { data, error } = await db
+    .from("daily_blip_history")
+    .select("study_date, green_count, total_blips, qualifies")
+    .order("study_date", { ascending: false });
+
+  if (error) {
+    console.error("Could not load daily history:", error);
+    $("streakMessage").textContent =
+      "Couldn't load study history. Check the Supabase table and permissions.";
+    return;
+  }
+
+  const history = data || [];
+  const { currentStreak, bestStreak } =
+    calculateStreaks(history);
+
+  $("currentStreak").textContent =
+    `${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+
+  $("bestStreak").textContent =
+    `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
+
+  $("streakMessage").textContent =
+    currentStreak > 0
+      ? `You're on a ${currentStreak}-day combo. Keep it going!`
+      : "Complete 5 blips with at least 3 green to start a combo.";
+
+  renderDailyHistory(history);
+  renderMilestones(bestStreak);
+}
+
+async function saveDailyResultIfComplete(refreshHistory = true) {
+  // Do not save partial study sessions.
+  const colors = Array.from(blips).map(blip => {
+    if (blip.classList.contains("green")) return "green";
+    if (blip.classList.contains("red")) return "red";
+    return null;
+  });
+
+  const allFilled = colors.length === 5 &&
+    colors.every(color => color === "green" || color === "red");
+
+  if (!allFilled) return;
+
+  if (!currentUser) {
+    $("streakMessage").textContent =
+      "Today's blips are complete. Sign in to save the score to your history.";
+    return;
+  }
+
+  const greenCount = colors.filter(color => color === "green").length;
+
+  const { error } = await db
+    .from("daily_blip_history")
+    .upsert(
+      {
+        user_id: currentUser.id,
+        study_date: getTodayKey(),
+        green_count: greenCount,
+        total_blips: 5
+      },
+      {
+        onConflict: "user_id,study_date",
+        ignoreDuplicates: true
+      }
+    );
+
+  if (error) {
+    console.error("Could not save daily result:", error);
+    $("streakMessage").textContent =
+      "Today's score couldn't be saved. Check your connection and try again.";
+    return;
+  }
+
+  if (refreshHistory) {
+    await loadDailyHistory();
+  }
+}
+
+
   const colors = Array.isArray(saved.colors)
     ? saved.colors
     : [];
@@ -438,6 +674,7 @@ function markBlip(color) {
     return null;
   });
 
+
   localStorage.setItem(
     BLIP_STORAGE_KEY,
     JSON.stringify({
@@ -448,8 +685,6 @@ function markBlip(color) {
 
   updateBlipLabel();
 
-  // Celebrate only when all blips are filled
-  // and at least 3 of them are green.
   const allBlipsFilled = colors.every(
     color => color === "green" || color === "red"
   );
@@ -458,10 +693,18 @@ function markBlip(color) {
     color => color === "green"
   ).length;
 
-  if (allBlipsFilled && greenCount >= 3) {
-    launchConfetti();
+  if (allBlipsFilled) {
+    // Save every completed day, including scores below 3.
+    // Low scores are needed to record streak breaks.
+    saveDailyResultIfComplete();
+
+    // Preserve your existing confetti rule.
+    if (greenCount >= 3) {
+      launchConfetti();
+    }
   }
 }
+
 
 
 correctButton.addEventListener("click", () => {
