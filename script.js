@@ -297,4 +297,33 @@ async function startApp() {
   await loadCards();
 }
 
+
+const blips = document.querySelectorAll(".blip");
+const blipContainer = document.getElementById("blips");
+const correctButton = document.getElementById("correctButton");
+const incorrectButton = document.getElementById("incorrectButton");
+
+let blipIndex = 0;
+
+function markBlip(color) {
+  if (blipIndex >= blips.length) return;
+
+  blips[blipIndex].classList.add(color);
+  blipIndex++;
+
+  blipContainer.setAttribute(
+    "aria-label",
+    `Progress: ${blipIndex} of ${blips.length}`
+  );
+}
+
+correctButton.addEventListener("click", () => {
+  markBlip("green");
+});
+
+incorrectButton.addEventListener("click", () => {
+  markBlip("red");
+});
+
+
 startApp();
