@@ -186,7 +186,7 @@ textarea {
 
 .kanji {
   font-size: clamp(48px, 13vw, 76px);
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .hiragana {
@@ -199,8 +199,8 @@ textarea {
 }
 
 .definition {
-  font-size: 21px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 400;
 }
 
 .answer-divider {
