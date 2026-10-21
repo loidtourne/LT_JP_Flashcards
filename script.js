@@ -475,23 +475,29 @@ function renderDailyHistory(history) {
   });
 }
 
+
 function renderMilestones(bestStreak) {
   const milestones = [3, 7, 14, 30];
   const container = $("streakMilestones");
+
   container.replaceChildren();
 
-  milestones.forEach(target => {
-    const badge = document.createElement("span");
-    badge.textContent = bestStreak >= target
-      ? `✓ ${target}-day milestone`
-      : `${target}-day milestone`;
+  const highestMilestone = milestones
+    .filter(target => bestStreak >= target)
+    .pop();
 
-    if (bestStreak >= target) {
-      badge.classList.add("unlocked");
-    }
+  if (!highestMilestone) {
+    container.hidden = true;
+    return;
+  }
 
-    container.appendChild(badge);
-  });
+  container.hidden = false;
+
+  const badge = document.createElement("span");
+  badge.className = "unlocked";
+  badge.textContent = `🔥 ${highestMilestone}-day milestone`;
+
+  container.appendChild(badge);
 }
 
 async function loadDailyHistory() {
