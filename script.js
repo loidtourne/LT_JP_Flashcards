@@ -381,6 +381,7 @@ function updateBlipLabel() {
 }
 
 
+
 function launchConfetti() {
   const colors = [
     "#ff6b6b",
@@ -391,36 +392,37 @@ function launchConfetti() {
     "#ff8fab"
   ];
 
-  const pieceCount = 500;
+  const pieceCount = 400;
+  const spawnInterval = 20; // Milliseconds between pieces
 
   for (let i = 0; i < pieceCount; i++) {
-    const piece = document.createElement("div");
-
-    piece.className = "confetti-piece";
-    piece.style.left = `${Math.random() * 100}vw`;
-    piece.style.backgroundColor =
-      colors[Math.floor(Math.random() * colors.length)];
-
-    piece.style.setProperty(
-      "--drift",
-      `${Math.random() * 240 - 120}px`
-    );
-
-    piece.style.setProperty(
-      "--rotation",
-      `${Math.random() * 1440 - 720}deg`
-    );
-
-    piece.style.animationDelay = `${Math.random() * 0.8}s`;
-
-    document.body.appendChild(piece);
-
-    // Remove the element after its animation finishes.
     setTimeout(() => {
-      piece.remove();
-    }, 6000);
+      const piece = document.createElement("div");
+
+      piece.className = "confetti-piece";
+      piece.style.left = `${Math.random() * 100}vw`;
+      piece.style.backgroundColor =
+        colors[Math.floor(Math.random() * colors.length)];
+
+      piece.style.setProperty(
+        "--drift",
+        `${Math.random() * 240 - 120}px`
+      );
+
+      piece.style.setProperty(
+        "--rotation",
+        `${Math.random() * 1440 - 720}deg`
+      );
+
+      document.body.appendChild(piece);
+
+      setTimeout(() => {
+        piece.remove();
+      }, 4000);
+    }, i * spawnInterval);
   }
 }
+
 
 
 // Mark the next empty blip and save it
