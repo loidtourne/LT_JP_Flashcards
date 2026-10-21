@@ -62,7 +62,7 @@ function renderCard(card) {
   $("hiragana").textContent = card.hiragana;
   $("romaji").textContent = card.romaji;
   $("class").textContent = card.class;
-  $("english").text = card.english;
+  $("english").textContent = card.english || "—";
   $("definition").textContent = card.definition;
 
   // Preserve the card's current side.
