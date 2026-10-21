@@ -120,6 +120,39 @@ async function loadCards() {
 }
 
 
+async function loadDailyHistory() {
+  if (!currentUser) {
+    $("currentStreak").textContent = "0 days";
+    $("bestStreak").textContent = "0 days";
+    renderMilestones(0);
+    return;
+  }
+
+  const { data, error } = await db
+    .from("daily_blip_history")
+    .select("study_date, green_count, qualifies")
+    .eq("user_id", currentUser.id)
+    .order("study_date", { ascending: false });
+
+  if (error) {
+    console.error("Could not load daily history:", error);
+    return;
+  }
+
+  const history = data || [];
+  const { currentStreak, bestStreak } =
+    calculateStreaks(history);
+
+  $("currentStreak").textContent =
+    `${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+
+  $("bestStreak").textContent =
+    `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
+
+  renderMilestones(bestStreak);
+}
+
+
 async function syncSession(session) {
   currentUser = session?.user || null;
 
