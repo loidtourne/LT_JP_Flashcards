@@ -349,3 +349,18 @@ footer {
   background: #ef535022;
 }
 
+.reset-blips-button {
+  padding: 6px 14px;
+  border: 1px solid #888;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text, inherit);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.reset-blips-button:hover {
+  background: #88888822;
+  transform: scale(1.03);
+}
