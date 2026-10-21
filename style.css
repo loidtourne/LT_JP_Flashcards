@@ -456,9 +456,10 @@ footer {
   background: linear-gradient(
     180deg,
     #e65100 0%,
-    #ff9800 15%,
-    #ffcc80 50%,
-    #ff9800 85%,
+    #ff9800 10%,
+    #ffcc80 30%,
+    #ffcc80 70%,
+    #ff9800 90%,
     #e65100 100%
   );
   color: #191919;
