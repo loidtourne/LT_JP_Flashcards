@@ -286,12 +286,10 @@ async function startApp() {
   }
 
   db.auth.onAuthStateChange((_event, session) => {
-    // Defer UI work until after the auth callback returns.
-    setTimeout(() => {
-      syncSession(session);
-      loadCards();
-    }, 0);
-  });
+  setTimeout(() => {
+    syncSession(session);
+  }, 0);
+});
 
   await loadCards();
 }
