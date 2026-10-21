@@ -22,6 +22,8 @@ let busy = false;
 
 const flashcard = $("flashcard");
 
+const resetBlipsButton = document.getElementById("resetBlipsButton");
+
 function setMessage(id, message, isError = false) {
   const el = $(id);
   el.textContent = message;
@@ -385,6 +387,28 @@ correctButton.addEventListener("click", () => {
 
 incorrectButton.addEventListener("click", () => {
   markBlip("red");
+});
+
+resetBlipsButton.addEventListener("click", () => {
+  // Clear all blip colors
+  blips.forEach(blip => {
+    blip.classList.remove("green", "red");
+  });
+
+  // Reset the progress counter
+  blipIndex = 0;
+
+  // Save the empty state for today
+  localStorage.setItem(
+    BLIP_STORAGE_KEY,
+    JSON.stringify({
+      date: getTodayKey(),
+      colors: []
+    })
+  );
+
+  // Update the accessibility label
+  updateBlipLabel();
 });
 
 // Restore saved progress when the app loads
