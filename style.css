@@ -454,7 +454,7 @@ footer {
 /* Light orange to dark orange across the entire card */
 .current-combo-card.active-combo {
   background: linear-gradient(
-    135deg,
+    180deg,
     #ffcc80 0%,
     #ffab40 30%,
     #ff9800 65%,
