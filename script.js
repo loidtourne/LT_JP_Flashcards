@@ -321,17 +321,36 @@ function getTodayKey() {
 }
 
 // Restore today's saved blips
-function restoreBlips() {
-  const saved = JSON.parse(
-    localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
-  );
 
-  // Start fresh if the saved date is not today
+function restoreBlips() {
+  let saved = {};
+
+  try {
+    saved = JSON.parse(
+      localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
+    );
+  } catch (error) {
+    console.error("Could not restore saved blips:", error);
+  }
+
+  // Clear existing colors before restoring.
+  blips.forEach(blip => {
+    blip.classList.remove("green", "red");
+  });
+
+  blipIndex = 0;
+
+  // If the saved date isn't today, start fresh.
   if (saved.date !== getTodayKey()) {
     localStorage.setItem(
       BLIP_STORAGE_KEY,
-      JSON.stringify({ date: getTodayKey(), colors: [] })
+      JSON.stringify({
+        date: getTodayKey(),
+        colors: []
+      })
     );
+
+    updateBlipLabel();
     return;
   }
 
@@ -339,15 +358,19 @@ function restoreBlips() {
     ? saved.colors
     : [];
 
-  colors.slice(0, blips.length).forEach((color, index) => {
-    if (color === "green" || color === "red") {
-      blips[index].classList.add(color);
-      blipIndex = index + 1;
+  // Restore consecutive filled blips.
+  for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
+    if (colors[i] !== "green" && colors[i] !== "red") {
+      break;
     }
-  });
+
+    blips[i].classList.add(colors[i]);
+    blipIndex++;
+  }
 
   updateBlipLabel();
 }
+
 
 // Update the progress label
 function updateBlipLabel() {
