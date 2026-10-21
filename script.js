@@ -363,6 +363,7 @@ function getTodayKey() {
 
 // Restore today's saved blips
 
+
 function restoreBlips() {
   let saved = {};
 
@@ -374,14 +375,12 @@ function restoreBlips() {
     console.error("Could not restore saved blips:", error);
   }
 
-  // Clear existing colors before restoring.
   blips.forEach(blip => {
     blip.classList.remove("green", "red");
   });
 
   blipIndex = 0;
 
-  // If the saved date isn't today, start fresh.
   if (saved.date !== getTodayKey()) {
     localStorage.setItem(
       BLIP_STORAGE_KEY,
@@ -394,6 +393,23 @@ function restoreBlips() {
     updateBlipLabel();
     return;
   }
+
+  const colors = Array.isArray(saved.colors)
+    ? saved.colors
+    : [];
+
+  for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
+    if (colors[i] !== "green" && colors[i] !== "red") {
+      break;
+    }
+
+    blips[i].classList.add(colors[i]);
+    blipIndex++;
+  }
+
+  updateBlipLabel();
+}
+
 
   
 function getDateOffset(dateString, offset) {
@@ -537,31 +553,23 @@ async function loadDailyHistory() {
   if (!currentUser) {
     $("currentStreak").textContent = "0 days";
     $("bestStreak").textContent = "0 days";
-    $("streakMessage").textContent =
-      "Sign in to sync your study history across devices.";
-    $("dailyHistory").replaceChildren();
-
-    const item = document.createElement("li");
-    item.textContent = "Sign in to view saved daily scores.";
-    $("dailyHistory").appendChild(item);
-
     renderMilestones(0);
     return;
   }
 
   const { data, error } = await db
     .from("daily_blip_history")
-    .select("study_date, green_count, total_blips, qualifies")
+    .select("study_date, green_count, qualifies")
+    .eq("user_id", currentUser.id)
     .order("study_date", { ascending: false });
 
   if (error) {
     console.error("Could not load daily history:", error);
-    $("streakMessage").textContent =
-      "Couldn't load study history. Check the Supabase table and permissions.";
     return;
   }
 
   const history = data || [];
+
   const { currentStreak, bestStreak } =
     calculateStreaks(history);
 
@@ -571,14 +579,9 @@ async function loadDailyHistory() {
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
 
-  $("streakMessage").textContent =
-    currentStreak > 0
-      ? `You're on a ${currentStreak}-day combo. Keep it going!`
-      : "Complete 5 blips with at least 3 green to start a combo.";
-
-  renderDailyHistory(history);
   renderMilestones(bestStreak);
 }
+
 
 async function saveDailyResultIfComplete(refreshHistory = true) {
   // Do not save partial study sessions.
@@ -626,24 +629,6 @@ async function saveDailyResultIfComplete(refreshHistory = true) {
   if (refreshHistory) {
     await loadDailyHistory();
   }
-}
-
-
-  const colors = Array.isArray(saved.colors)
-    ? saved.colors
-    : [];
-
-  // Restore consecutive filled blips.
-  for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
-    if (colors[i] !== "green" && colors[i] !== "red") {
-      break;
-    }
-
-    blips[i].classList.add(colors[i]);
-    blipIndex++;
-  }
-
-  updateBlipLabel();
 }
 
 
