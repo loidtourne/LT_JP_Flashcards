@@ -417,6 +417,13 @@ footer {
   margin: 16px 0;
 }
 
+#currentStreak.active-combo {
+  background-color: #ff9800;
+  color: #191919;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
 .streak-summary > div {
   display: flex;
   flex-direction: column;
