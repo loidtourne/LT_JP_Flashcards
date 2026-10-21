@@ -298,96 +298,129 @@ async function startApp() {
 }
 
 
+(() => {
+  function initializeBlips() {
+    const blips = document.querySelectorAll(".blip");
+    const blipContainer = document.getElementById("blips");
+    const correctButton = document.getElementById("correctButton");
+    const incorrectButton = document.getElementById("incorrectButton");
 
-const blips = document.querySelectorAll(".blip");
-const blipContainer = document.getElementById("blips");
-const correctButton = document.getElementById("correctButton");
-const incorrectButton = document.getElementById("incorrectButton");
+    const STORAGE_KEY = "japaneseFlashcardBlips";
 
-const BLIP_STORAGE_KEY = "japaneseFlashcardBlips";
+    if (!blips.length || !blipContainer || !correctButton || !incorrectButton) {
+      console.error("Blip tracker elements were not found.");
+      return;
+    }
 
-let blipIndex = 0;
+    let blipIndex = 0;
 
-// Get today's local date, such as 2026-10-20
-function getTodayKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+    function today() {
+      const now = new Date();
+      return [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0")
+      ].join("-");
+    }
 
-  return `${year}-${month}-${day}`;
-}
+    function updateLabel() {
+      blipContainer.setAttribute(
+        "aria-label",
+        `Progress: ${blipIndex} of ${blips.length}`
+      );
+    }
 
-// Restore today's saved blips
-function restoreBlips() {
-  const saved = JSON.parse(
-    localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
-  );
+    function getSavedData() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
 
-  // Start fresh if the saved date is not today
-  if (saved.date !== getTodayKey()) {
-    localStorage.setItem(
-      BLIP_STORAGE_KEY,
-      JSON.stringify({ date: getTodayKey(), colors: [] })
-    );
-    return;
+        if (saved && saved.date === today() && Array.isArray(saved.colors)) {
+          return saved;
+        }
+      } catch (error) {
+        console.error("Could not read saved blips:", error);
+      }
+
+      return { date: today(), colors: [] };
+    }
+
+    function saveBlips() {
+      const colors = Array.from(blips).map(blip => {
+        if (blip.classList.contains("green")) return "green";
+        if (blip.classList.contains("red")) return "red";
+        return null;
+      });
+
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ date: today(), colors })
+        );
+      } catch (error) {
+        console.error("Could not save blips:", error);
+      }
+    }
+
+    function restoreBlips() {
+      const saved = getSavedData();
+
+      blips.forEach((blip, index) => {
+        blip.classList.remove("green", "red");
+
+        const color = saved.colors[index];
+        if (color === "green" || color === "red") {
+          blip.classList.add(color);
+        }
+      });
+
+      blipIndex = 0;
+
+      // Find the first unfilled blip.
+      while (
+        blipIndex < blips.length &&
+        (blips[blipIndex].classList.contains("green") ||
+          blips[blipIndex].classList.contains("red"))
+      ) {
+        blipIndex++;
+      }
+
+      // Keep the blips in order if saved data is incomplete.
+      for (let i = blipIndex; i < blips.length; i++) {
+        blips[i].classList.remove("green", "red");
+      }
+
+      updateLabel();
+    }
+
+    function markBlip(color) {
+      // Clear yesterday's progress if the date has changed.
+      if (getSavedData().date !== today()) {
+        restoreBlips();
+      }
+
+      if (blipIndex >= blips.length) return;
+
+      blips[blipIndex].classList.add(color);
+      blipIndex++;
+
+      saveBlips();
+      updateLabel();
+    }
+
+    correctButton.addEventListener("click", () => markBlip("green"));
+    incorrectButton.addEventListener("click", () => markBlip("red"));
+
+    restoreBlips();
   }
 
-  const colors = Array.isArray(saved.colors)
-    ? saved.colors
-    : [];
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeBlips);
+  } else {
+    initializeBlips();
+  }
+})();
 
-  colors.slice(0, blips.length).forEach((color, index) => {
-    if (color === "green" || color === "red") {
-      blips[index].classList.add(color);
-      blipIndex = index + 1;
-    }
-  });
-
-  updateBlipLabel();
-}
-
-// Update the progress label
-function updateBlipLabel() {
-  blipContainer.setAttribute(
-    "aria-label",
-    `Progress: ${blipIndex} of ${blips.length}`
-  );
-}
-
-// Mark the next empty blip and save it
-function markBlip(color) {
-  if (blipIndex >= blips.length) return;
-
-  blips[blipIndex].classList.add(color);
-  blipIndex++;
-
-  const colors = Array.from(blips).map(blip => {
-    if (blip.classList.contains("green")) return "green";
-    if (blip.classList.contains("red")) return "red";
-    return null;
-  });
-
-  localStorage.setItem(
-    BLIP_STORAGE_KEY,
-    JSON.stringify({
-      date: getTodayKey(),
-      colors: colors
-    })
-  );
-
-  updateBlipLabel();
-}
-
-correctButton.addEventListener("click", () => {
-  markBlip("green");
-});
-
-incorrectButton.addEventListener("click", () => {
-  markBlip("red");
-});
-
-// Restore saved progress when the app loads
-restoreBlips();
+correctButton.addEventListener("click", () => markBlip("green"));
+incorrectButton.addEventListener("click", () => markBlip("red"));
 
 startApp();
