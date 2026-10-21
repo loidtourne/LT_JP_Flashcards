@@ -182,6 +182,8 @@ textarea {
 .card-back {
   transform: rotateY(180deg);
   background: var(--surface-raised);
+  gap: 3px;
+  padding: 12px 20px;
 }
 
 .kanji {
@@ -201,6 +203,28 @@ textarea {
 .definition {
   font-size: 21px;
   font-weight: 600;
+}
+
+.card-back .hiragana,
+.card-back .romaji,
+.card-back .class,
+.card-back .definition {
+  margin: 0;
+  padding: 0;
+}
+
+.card-back .hiragana {
+  line-height: 1.1;
+}
+
+.card-back .romaji,
+.card-back .class {
+  line-height: 1.1;
+}
+
+.card-back .definition {
+  font-size: 14px;
+  line-height: 1.2;
 }
 
 .answer-divider {
