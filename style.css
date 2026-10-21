@@ -201,7 +201,7 @@ textarea {
 }
 
 .definition {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
 }
 
@@ -219,11 +219,11 @@ textarea {
 
 .card-back .romaji,
 .card-back .class {
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .card-back .definition {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.2;
 }
 
