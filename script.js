@@ -526,7 +526,7 @@ function renderDailyHistory(history) {
 
 
 function renderMilestones(bestStreak) {
-  const milestones = [3, 7, 14, 30];
+  const milestones = [3, 7, 14, 30, 45, 60];
   const container = $("streakMilestones");
 
   container.replaceChildren();
@@ -574,7 +574,7 @@ async function loadDailyHistory() {
     calculateStreaks(history);
 
   $("currentStreak").textContent =
-    `${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+    `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
 
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
