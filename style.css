@@ -518,8 +518,9 @@ footer {
 .streak-summary > .current-combo-card.active-combo {
   background: linear-gradient(
     90deg,
-    #fd6a37 50%,
-    #fee236 100%
+    #fee236 50%,
+    #fd6a37 100%
+    
   );
   color: #191919;
 }
