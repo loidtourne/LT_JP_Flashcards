@@ -158,6 +158,7 @@ async function loadDailyHistory() {
 
 
 async function syncSession(session) {
+  console.trace("SYNC SESSION CALLED");
   currentUser = session?.user || null;
 
   isOwner = Boolean(
