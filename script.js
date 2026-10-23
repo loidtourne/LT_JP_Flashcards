@@ -838,10 +838,12 @@ function markBlip(color) {
 
 correctButton.addEventListener("click", () => {
   markBlip("green");
+  chooseRandomCard();
 });
 
 incorrectButton.addEventListener("click", () => {
   markBlip("red");
+  chooseRandomCard();
 });
 
 resetBlipsButton.addEventListener("click", () => {
