@@ -442,6 +442,14 @@ function getTodayKey() {
   return `${year}-${month}-${day}`;
 }
 
+function ensureDailyStatusElement() {
+  return null;
+}
+
+function setDailyStatus(message, isError = false) {
+  // Status messages are intentionally disabled.
+}
+
 function getDisplayedBlipColors() {
   return Array.from(blips).map(blip => {
     if (blip.classList.contains("green")) return "green";
