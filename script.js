@@ -343,12 +343,13 @@ async function startApp() {
     await syncSession(data.session);
   }
 
-  db.auth.onAuthStateChange((_event, session) => {
+db.auth.onAuthStateChange((event, session) => {
+  console.log("AUTH EVENT:", event);
+
   setTimeout(() => {
     syncSession(session);
   }, 0);
 });
-
   await loadCards();
 }
 
