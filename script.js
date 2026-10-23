@@ -563,6 +563,13 @@ async function saveDailyResultIfComplete(refreshHistory = true) {
   setDailyStatus("Saving today's result…");
   updateDailyControls();
 
+  console.log("ABOUT TO SAVE DAILY RESULT", {
+  date: getTodayKey(),
+  user: currentUser?.id,
+  colors: getDisplayedBlipColors()
+});
+console.trace("SAVE CALL STACK");
+
   try {
     const { error } = await db
       .from("daily_blip_history")
