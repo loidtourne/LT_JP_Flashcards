@@ -547,6 +547,8 @@ function renderMilestones(bestStreak) {
 }
 
 async function saveDailyResultIfComplete(refreshHistory = true) {
+  console.trace("saveDailyResultIfComplete called");
+  
   if (dailyCompleted || dailySaveInProgress || !areAllBlipsFilled()) return;
 
   if (!currentUser) {
