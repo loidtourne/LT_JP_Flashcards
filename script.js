@@ -1,511 +1,655 @@
 
+/*
+  Japanese Flashcards
+  Configure these values using your Supabase project.
+*/
 const SUPABASE_URL = "https://ckbasqdqtmxwrixcctca.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Gumosi4t5hmBCR_eiLLNNw_unIoQjo_";
+const OWNER_EMAIL = "loidtourne@gmail.com";
 
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
 const $ = (id) => document.getElementById(id);
 
-const status = $("appStatus");
-const authSection = $("authSection");
-const studySection = $("studySection");
-const signInForm = $("signInForm");
-const signOutButton = $("signOutButton");
-
+let cards = [];
+let currentCard = null;
 let currentUser = null;
-let flashcards = [];
-let currentCardIndex = 0;
-let dailyHistory = [];
-let todaysBlips = [];
-let historyLoaded = false;
-let savingDailyResult = false;
-let celebrationShown = false;
+let isOwner = false;
+let busy = false;
 
-const BLIP_TOTAL = 5;
+const flashcard = $("flashcard");
 
-function localDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const resetBlipsButton = document.getElementById("resetBlipsButton");
+
+function setMessage(id, message, isError = false) {
+  const el = $(id);
+  el.textContent = message;
+  el.style.color = isError ? "#ff9b9b" : "";
 }
 
-function dateOffset(dateKey, offset) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setDate(date.getDate() + offset);
-  return localDateKey(date);
+function updateInterface() {
+  $("authButton").textContent = currentUser ? "Sign out" : "Sign in";
+  $("accountStatus").textContent = currentUser
+    ? (isOwner ? "Signed in as owner" : "Signed in")
+    : "Study mode";
+
+  $("addButton").hidden = !isOwner;
+  if (!isOwner) $("addPanel").hidden = true;
+
+  $("cardCount").textContent = `${cards.length} card${cards.length === 1 ? "" : "s"}`;
 }
 
-function setStatus(message) {
-  status.textContent = message;
-}
+function renderCard(card) {
+  const wasFlipped = flashcard.classList.contains("flipped");
 
-function showSignedOut(message = "Please sign in to continue.") {
-  currentUser = null;
-  historyLoaded = false;
-  authSection.hidden = false;
-  studySection.hidden = true;
-  setStatus(message);
-}
+  currentCard = card;
 
-function showSignedIn(session) {
-  if (!session?.user) return;
+  if (!card) {
+    flashcard.classList.remove("flipped");
+    flashcard.setAttribute("aria-pressed", "false");
 
-  currentUser = session.user;
-  authSection.hidden = true;
-  studySection.hidden = false;
-  setStatus(`Signed in as ${session.user.email ?? "your account"}.`);
-}
-
-async function initializeApp() {
-  setStatus("Checking your session…");
-
-  try {
-    const { data, error } = await db.auth.getSession();
-    if (error) throw error;
-
-    if (data.session) {
-      await enterStudy(data.session);
-    } else {
-      showSignedOut();
-    }
-  } catch (error) {
-    console.error("Session initialization failed:", error);
-    setStatus(`Unable to check session: ${error.message}`);
+    $("kanji").textContent = "日本語";
+    $("hiragana").textContent = "—";
+    $("romaji").textContent = "—";
+    $("class").textContent = "—";
+    $("english").textContent = "—";
+    $("definition").textContent = "No cards available";
+    return;
   }
+
+  $("kanji").textContent = card.kanji;
+  $("hiragana").textContent = card.hiragana;
+  $("romaji").textContent = card.romaji;
+  $("class").textContent = card.class;
+  $("english").textContent = card.english || "—";
+  $("definition").textContent = card.definition;
+
+  // Preserve the card's current side.
+  flashcard.classList.toggle("flipped", wasFlipped);
+  flashcard.setAttribute("aria-pressed", String(wasFlipped));
 }
 
-async function enterStudy(session) {
-  showSignedIn(session);
+function chooseRandomCard() {
+  if (cards.length === 0) {
+    renderCard(null);
+    setMessage("status", "No vocabulary yet. Add your first card when signed in.");
+    return;
+  }
 
-  // Loading and sign-in only READ data. They never write daily history.
-  await Promise.all([
-    loadFlashcards(),
-    loadDailyHistory()
-  ]);
+  let candidates = cards;
+
+  if (currentCard && cards.length > 1) {
+    candidates = cards.filter(card => card.id !== currentCard.id);
+  }
+
+  const next = candidates[Math.floor(Math.random() * candidates.length)];
+  renderCard(next);
+  setMessage("status", "Ready to study.");
 }
 
-signInForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const email = $("email").value.trim();
-  const password = $("password").value;
-
-  setStatus("Signing in…");
-
-  try {
-    const { data, error } = await db.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) throw error;
-
-    if (data.session) {
-      await enterStudy(data.session);
-    }
-  } catch (error) {
-    console.error("Sign-in failed:", error);
-    setStatus(`Sign-in failed: ${error.message}`);
-  }
-});
-
-signOutButton.addEventListener("click", async () => {
-  setStatus("Signing out…");
-
-  try {
-    const { error } = await db.auth.signOut();
-    if (error) throw error;
-
-    showSignedOut("Signed out successfully.");
-  } catch (error) {
-    console.error("Sign-out failed:", error);
-    setStatus(`Sign-out failed: ${error.message}`);
-  }
-});
-
-// Avoid doing a second data load for the SIGNED_IN event caused by the
-// sign-in form above. The form itself calls enterStudy().
-db.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_OUT" || !session) {
-    showSignedOut();
-  }
-});
-
-async function loadFlashcards() {
-  const counter = $("cardCounter");
-  counter.textContent = "Loading cards…";
+async function loadCards() {
+  setMessage("status", "Loading vocabulary…");
+  $("randomButton").disabled = true;
 
   try {
     const { data, error } = await db
       .from("flashcards")
-      .select("id, kanji, hiragana, romaji, class, english, definition")
-      .order("id", { ascending: true });
+      .select("id, kanji, hiragana, romaji, class, english, definition, created_at")
+      .order("created_at", { ascending: true });
 
     if (error) throw error;
 
-    flashcards = data ?? [];
-    currentCardIndex = 0;
+    cards = data || [];
+    updateInterface();
 
-    if (flashcards.length === 0) {
-      counter.textContent = "No flashcards found.";
-      clearFlashcard();
-      return;
+    if (cards.length > 0) {
+      chooseRandomCard();
+    } else {
+      renderCard(null);
+      setMessage("status", "Your vocabulary is empty. Sign in to add your first card.");
     }
-
-    renderFlashcard();
   } catch (error) {
-    console.error("Flashcard loading failed:", error);
-    counter.textContent = `Unable to load cards: ${error.message}`;
+    console.error("Could not load flashcards:", error);
+    setMessage("status", "Couldn't load cards. Check your connection and Supabase settings.", true);
+  } finally {
+    $("randomButton").disabled = false;
   }
 }
 
-function clearFlashcard() {
-  [
-    "cardKanji", "cardHiragana", "cardRomaji",
-    "cardClass", "cardEnglish", "cardDefinition"
-  ].forEach((id) => {
-    $(id).textContent = "";
-  });
-}
-
-function renderFlashcard() {
-  const card = flashcards[currentCardIndex];
-
-  if (!card) {
-    clearFlashcard();
-    $("cardCounter").textContent = "No flashcards available.";
-    return;
-  }
-
-  $("cardKanji").textContent = card.kanji ?? "";
-  $("cardHiragana").textContent = card.hiragana ?? "";
-  $("cardRomaji").textContent = card.romaji ?? "";
-  $("cardClass").textContent = card.class ?? "";
-  $("cardEnglish").textContent = card.english ?? "";
-  $("cardDefinition").textContent = card.definition ?? "";
-
-  $("cardCounter").textContent =
-    `Card ${currentCardIndex + 1} of ${flashcards.length}`;
-
-  $("flashcard").classList.remove("flipped");
-}
-
-$("flipCardButton").addEventListener("click", () => {
-  $("flashcard").classList.toggle("flipped");
-});
-
-$("nextCardButton").addEventListener("click", () => {
-  if (!flashcards.length) return;
-
-  currentCardIndex = (currentCardIndex + 1) % flashcards.length;
-  renderFlashcard();
-});
-
-// Make the existing CSS selectors work with the current HTML structure.
-function prepareBlipElements() {
-  $("flashcard").classList.add("study");
-
-  const dots = [...document.querySelectorAll("[data-blip]")];
-  $("blipDots").classList.add("blips");
-
-  dots.forEach((dot) => dot.classList.add("blip"));
-
-  $("greenBlipButton").classList.add("blip-button", "correct");
-  $("redBlipButton").classList.add("blip-button", "incorrect");
-  $("resetBlipsButton").classList.add("reset-blips-button");
-}
-
-function renderBlips() {
-  const dots = [...document.querySelectorAll("[data-blip]")];
-
-  dots.forEach((dot, index) => {
-    dot.classList.remove("green", "red");
-
-    const value = todaysBlips[index];
-
-    if (value === "green") dot.classList.add("green");
-    if (value === "red") dot.classList.add("red");
-  });
-
-  const greenCount = todaysBlips.filter((value) => value === "green").length;
-
-  $("blipCount").textContent =
-    `${todaysBlips.length} of ${BLIP_TOTAL} completed (${greenCount} green)`;
-
-  const finished = todaysBlips.length === BLIP_TOTAL;
-  $("greenBlipButton").disabled = finished || savingDailyResult;
-  $("redBlipButton").disabled = finished || savingDailyResult;
-}
-
-function setBlip(value) {
-  if (!currentUser || !historyLoaded || savingDailyResult) return;
-  if (todaysBlips.length >= BLIP_TOTAL) return;
-
-  todaysBlips.push(value);
-  renderBlips();
-
-  if (todaysBlips.length === BLIP_TOTAL) {
-    saveDailyResultIfComplete();
-  }
-}
-
-$("greenBlipButton").addEventListener("click", () => setBlip("green"));
-$("redBlipButton").addEventListener("click", () => setBlip("red"));
-
-$("resetBlipsButton").addEventListener("click", () => {
-  if (savingDailyResult) return;
-
-  // Reset only unfinished, local progress. Never delete saved history.
-  const today = localDateKey();
-  const alreadySaved = dailyHistory.some((row) => row.study_date === today);
-
-  if (alreadySaved) {
-    $("blipStatus").textContent =
-      "Today's result is already saved and cannot be reset here.";
-    return;
-  }
-
-  todaysBlips = [];
-  celebrationShown = false;
-  $("blipStatus").textContent = "Today's unfinished blips have been reset.";
-  renderBlips();
-});
 
 async function loadDailyHistory() {
-  historyLoaded = false;
-  $("blipStatus").textContent = "Loading daily history…";
-
-  try {
-    const { data, error } = await db
-      .from("daily_blip_history")
-      .select("study_date, green_count, total_blips, qualifies, completed_at")
-      .eq("user_id", currentUser.id)
-      .order("study_date", { ascending: false });
-
-    if (error) throw error;
-
-    dailyHistory = data ?? [];
-
-    const today = localDateKey();
-    const todayRecord = dailyHistory.find((row) => row.study_date === today);
-
-    if (todayRecord) {
-      // The database record is authoritative; don't create another one.
-      todaysBlips = Array.from(
-        { length: Math.min(todayRecord.total_blips ?? 0, BLIP_TOTAL) },
-        (_, index) => index < (todayRecord.green_count ?? 0) ? "green" : "red"
-      );
-
-      $("blipStatus").textContent =
-        "Today's result is already saved. History loaded without writing.";
-    } else {
-      todaysBlips = [];
-      $("blipStatus").textContent = "Complete five blips to save today's result.";
-    }
-
-    historyLoaded = true;
-    renderBlips();
-    renderDailyHistory();
-    renderStreaks();
-  } catch (error) {
-    console.error("Daily history loading failed:", error);
-    $("blipStatus").textContent = `Unable to load history: ${error.message}`;
-  }
-}
-
-async function saveDailyResultIfComplete() {
-  if (!currentUser || !historyLoaded || savingDailyResult) return;
-  if (todaysBlips.length !== BLIP_TOTAL) return;
-
-  const today = localDateKey();
-
-  // Guard against a second save from this page or a date already loaded.
-  if (dailyHistory.some((row) => row.study_date === today)) {
-    $("blipStatus").textContent = "Today's result is already saved.";
+  if (!currentUser) {
+    const currentStreakElement = $("currentStreak");
+    currentStreakElement.textContent = "🔥 0 days";
+    currentStreakElement.classList.remove("active-combo");
+    $("bestStreak").textContent = "0 days";
+    renderMilestones(0);
     return;
   }
 
-  savingDailyResult = true;
-  renderBlips();
+  const { data, error } = await db
+    .from("daily_blip_history")
+    .select("study_date, green_count, qualifies")
+    .eq("user_id", currentUser.id)
+    .order("study_date", { ascending: false });
 
-  const greenCount = todaysBlips.filter((value) => value === "green").length;
-  const qualifies = greenCount === BLIP_TOTAL;
-
-  try {
-    // Ignore duplicate inserts: the UNIQUE(user_id, study_date) constraint
-    // is the final protection against repeated writes.
-    const { data, error } = await db
-      .from("daily_blip_history")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          study_date: today,
-          green_count: greenCount,
-          total_blips: BLIP_TOTAL,
-          qualifies,
-          completed_at: new Date().toISOString()
-        },
-        {
-          onConflict: "user_id,study_date",
-          ignoreDuplicates: true
-        }
-      )
-      .select("study_date, green_count, total_blips, qualifies, completed_at");
-
-    if (error) throw error;
-
-    // An ignored duplicate may return no row. Reload to get the authoritative
-    // database result rather than overwriting local history.
-    await loadDailyHistory();
-
-    if (data && data.length > 0 && qualifies && !celebrationShown) {
-      celebrationShown = true;
-      launchConfetti();
-    }
-
-    $("blipStatus").textContent =
-      "Today's result has been saved or was already present in history.";
-  } catch (error) {
-    console.error("Daily result save failed:", error);
-    $("blipStatus").textContent =
-      `Save failed: ${error.message}. Your blips remain on screen; do not reset them.`;
-  } finally {
-    savingDailyResult = false;
-    renderBlips();
-  }
-}
-
-function renderDailyHistory() {
-  const container = $("dailyHistory");
-  container.replaceChildren();
-
-  if (!dailyHistory.length) {
-    const empty = document.createElement("p");
-    empty.textContent = "No daily history yet.";
-    container.appendChild(empty);
+  if (error) {
+    console.error("Could not load daily history:", error);
     return;
   }
 
-  const list = document.createElement("ul");
-  list.className = "daily-history";
+  const history = data || [];
+  const { currentStreak, bestStreak } =
+    calculateStreaks(history);
 
-  dailyHistory.forEach((row) => {
-    const item = document.createElement("li");
+  const currentStreakElement = $("currentStreak");
+  currentStreakElement.textContent =
+    `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
+  currentStreakElement.classList.toggle("active-combo", currentStreak > 0);
 
-    const date = document.createElement("div");
-    date.className = "history-date";
+  $("bestStreak").textContent =
+    `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
 
-    const dateLabel = document.createElement("span");
-    dateLabel.textContent = row.study_date;
-
-    const details = document.createElement("small");
-    details.textContent = row.qualifies ? "Qualified day" : "Not qualified";
-
-    date.append(dateLabel, details);
-
-    const score = document.createElement("span");
-    score.className = `history-score ${
-      row.qualifies ? "history-qualified" : "history-failed"
-    }`;
-    score.textContent = `${row.green_count ?? 0}/${row.total_blips ?? BLIP_TOTAL} green`;
-
-    item.append(date, score);
-    list.appendChild(item);
-  });
-
-  container.appendChild(list);
+  renderMilestones(bestStreak);
 }
 
-function calculateStreaks(rows) {
-  const qualifiedDates = new Set(
-    rows.filter((row) => row.qualifies).map((row) => row.study_date)
+
+async function syncSession(session) {
+  currentUser = session?.user || null;
+
+  isOwner = Boolean(
+    currentUser?.email &&
+    currentUser.email.toLowerCase() === OWNER_EMAIL.toLowerCase()
   );
 
-  if (qualifiedDates.size === 0) {
-    return { current: 0, highest: 0, qualifiedDates };
+  $("loginPanel").hidden = true;
+  updateInterface();
+
+  if (currentUser) {
+    // Load history first, then save today's result if it is complete.
+    await loadDailyHistory();
+    await saveDailyResultIfComplete();
+  } else {
+    await loadDailyHistory();
   }
-
-  const today = localDateKey();
-  let current = 0;
-  let cursor = qualifiedDates.has(today) ? today : dateOffset(today, -1);
-
-  while (qualifiedDates.has(cursor)) {
-    current += 1;
-    cursor = dateOffset(cursor, -1);
-  }
-
-  let highest = 0;
-  const sortedDates = [...qualifiedDates].sort();
-
-  let run = 0;
-  let previous = null;
-
-  for (const date of sortedDates) {
-    run = previous && dateOffset(previous, 1) === date ? run + 1 : 1;
-    highest = Math.max(highest, run);
-    previous = date;
-  }
-
-  return { current, highest, qualifiedDates };
 }
 
-function renderStreaks() {
-  const { current, highest, qualifiedDates } = calculateStreaks(dailyHistory);
 
-  $("currentStreak").textContent = current;
-  $("highestStreak").textContent = highest;
+flashcard.addEventListener("click", () => {
+  if (!currentCard) return;
 
-  const currentCard = document.querySelector(".current-combo-card");
-  if (currentCard) currentCard.classList.toggle("active-combo", current > 0);
+  flashcard.classList.toggle("flipped");
+  flashcard.setAttribute(
+    "aria-pressed",
+    String(flashcard.classList.contains("flipped"))
+  );
+});
 
-  renderMilestones(highest);
-}
+$("randomButton").addEventListener("click", chooseRandomCard);
 
-function renderMilestones(highest) {
-  const section = $("streakSection");
-  let milestones = section.querySelector(".streak-milestones");
+$("authButton").addEventListener("click", async () => {
+  if (busy) return;
 
-  if (!milestones) {
-    milestones = document.createElement("div");
-    milestones.className = "streak-milestones";
-    milestones.setAttribute("aria-label", "Streak milestones");
-    section.appendChild(milestones);
+  if (currentUser) {
+    busy = true;
+    try {
+      const { error } = await db.auth.signOut();
+      if (error) throw error;
+      setMessage("status", "Signed out.");
+    } catch (error) {
+      setMessage("status", error.message || "Sign out failed.", true);
+    } finally {
+      busy = false;
+    }
+  } else {
+    $("loginPanel").hidden = !$("loginPanel").hidden;
+    $("loginMessage").textContent = "";
+  }
+});
+
+$("loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (busy) return;
+
+  busy = true;
+  const submit = $("loginForm").querySelector('button[type="submit"]');
+  submit.disabled = true;
+  setMessage("loginMessage", "Signing in…");
+
+  try {
+    const { data, error } = await db.auth.signInWithPassword({
+      email: $("email").value.trim(),
+      password: $("password").value
+    });
+
+    if (error) throw error;
+
+    if (data.user?.email?.toLowerCase() !== OWNER_EMAIL.toLowerCase()) {
+      await db.auth.signOut();
+      throw new Error("This account is not authorized to manage vocabulary.");
+    }
+
+    $("password").value = "";
+    $("loginPanel").hidden = true;
+    setMessage("status", "Signed in successfully.");
+  } catch (error) {
+    setMessage("loginMessage", error.message || "Sign-in failed.", true);
+  } finally {
+    busy = false;
+    submit.disabled = false;
+  }
+});
+
+$("addButton").addEventListener("click", () => {
+  if (!isOwner) return;
+
+  $("addPanel").hidden = !$("addPanel").hidden;
+
+  if (!$("addPanel").hidden) {
+    $("newKanji").focus();
+  }
+});
+
+$("cancelAdd").addEventListener("click", () => {
+  $("addPanel").hidden = true;
+  $("addForm").reset();
+  setMessage("saveMessage", "");
+});
+
+$("addForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!isOwner || !currentUser || busy) {
+    setMessage("saveMessage", "Please sign in with your authorized account.", true);
+    return;
   }
 
-  milestones.replaceChildren();
+  const newCard = {
+    kanji: $("newKanji").value.trim(),
+    hiragana: $("newHiragana").value.trim(),
+    romaji: $("newRomaji").value.trim(),
+    class: $("newClass").value.trim(),
+    english: $("newEnglish").value.trim(),
+    definition: $("newDefinition").value.trim()
+  };
 
-  [3, 7, 14, 30, 60, 100, 365].forEach((target) => {
-    const badge = document.createElement("span");
-    badge.textContent = `${target}-day streak`;
-    if (highest >= target) badge.classList.add("unlocked");
-    milestones.appendChild(badge);
+  if (Object.values(newCard).some(value => !value)) {
+    setMessage("saveMessage", "Please complete all six fields.", true);
+    return;
+  }
+
+  busy = true;
+  const saveButton = $("addForm").querySelector('button[type="submit"]');
+  saveButton.disabled = true;
+  setMessage("saveMessage", "Saving card…");
+
+  try {
+    const { data, error } = await db
+      .from("flashcards")
+      .insert(newCard)
+      .select("id, kanji, hiragana, romaji, class, english, definition, created_at")
+      .single();
+
+    if (error) throw error;
+
+    // Add the confirmed database result to the live list.
+    cards.push(data);
+    updateInterface();
+    renderCard(data);
+
+    $("addForm").reset();
+    $("addPanel").hidden = true;
+    setMessage("status", `Saved "${data.kanji}". Your new card is ready!`);
+    setMessage("saveMessage", "");
+  } catch (error) {
+    console.error("Could not save flashcard:", error);
+    setMessage(
+      "saveMessage",
+      "Couldn't save the card. Check your sign-in and database permissions.",
+      true
+    );
+  } finally {
+    busy = false;
+    saveButton.disabled = false;
+  }
+});
+
+async function startApp() {
+  if (
+    SUPABASE_URL.includes("YOUR_SUPABASE") ||
+    SUPABASE_KEY.includes("YOUR_SUPABASE")
+  ) {
+    setMessage("status", "Add your Supabase project URL and publishable key in script.js.", true);
+    $("randomButton").disabled = true;
+    return;
+  }
+
+  const { data, error } = await db.auth.getSession();
+
+  if (error) {
+    setMessage("status", "Could not check sign-in status.", true);
+  } else {
+    await syncSession(data.session);
+  }
+
+  db.auth.onAuthStateChange((_event, session) => {
+  setTimeout(() => {
+    syncSession(session);
+  }, 0);
+});
+
+  await loadCards();
+}
+
+
+
+const blips = document.querySelectorAll(".blip");
+const blipContainer = document.getElementById("blips");
+const correctButton = document.getElementById("correctButton");
+const incorrectButton = document.getElementById("incorrectButton");
+
+const BLIP_STORAGE_KEY = "japaneseFlashcardBlips";
+
+let blipIndex = 0;
+
+// Get today's local date, such as 2026-10-20
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// Restore today's saved blips
+function restoreBlips() {
+  let saved = {};
+
+  try {
+    saved = JSON.parse(
+      localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
+    );
+  } catch (error) {
+    console.error("Could not restore saved blips:", error);
+  }
+
+  blips.forEach(blip => {
+    blip.classList.remove("green", "red");
   });
+
+  blipIndex = 0;
+
+  if (saved.date !== getTodayKey()) {
+    localStorage.setItem(
+      BLIP_STORAGE_KEY,
+      JSON.stringify({ date: getTodayKey(), colors: [] })
+    );
+    updateBlipLabel();
+    return;
+  }
+
+  const colors = Array.isArray(saved.colors) ? saved.colors : [];
+
+  for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
+    if (colors[i] !== "green" && colors[i] !== "red") break;
+    blips[i].classList.add(colors[i]);
+    blipIndex++;
+  }
+
+  updateBlipLabel();
 }
+
+function getDateOffset(dateString, offset) {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function calculateStreaks(history) {
+  const byDate = new Map(history.map(day => [day.study_date, day]));
+  const today = getTodayKey();
+  const todayRecord = byDate.get(today);
+
+  let currentStreak = 0;
+  let cursor = today;
+
+  if (!todayRecord) {
+    cursor = getDateOffset(today, -1);
+  } else if (!todayRecord.qualifies) {
+    cursor = null;
+  }
+
+  while (cursor && byDate.get(cursor)?.qualifies) {
+    currentStreak++;
+    cursor = getDateOffset(cursor, -1);
+  }
+
+  const sorted = [...history].sort((a, b) =>
+    a.study_date.localeCompare(b.study_date)
+  );
+
+  let running = 0;
+  let bestStreak = 0;
+  let previousDate = null;
+
+  for (const day of sorted) {
+    if (!day.qualifies) {
+      running = 0;
+      previousDate = day.study_date;
+      continue;
+    }
+
+    if (previousDate && getDateOffset(previousDate, 1) === day.study_date) {
+      running++;
+    } else {
+      running = 1;
+    }
+
+    bestStreak = Math.max(bestStreak, running);
+    previousDate = day.study_date;
+  }
+
+  return { currentStreak, bestStreak };
+}
+
+function renderMilestones(bestStreak) {
+  const milestones = [3, 7, 14, 30];
+  const container = $("streakMilestones");
+  container.replaceChildren();
+
+  const highestMilestone = milestones
+    .filter(target => bestStreak >= target)
+    .pop();
+
+  if (!highestMilestone) {
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  const badge = document.createElement("span");
+  badge.className = "unlocked";
+  badge.textContent = `🔥 ${highestMilestone}-day milestone`;
+  container.appendChild(badge);
+}
+
+async function saveDailyResultIfComplete(refreshHistory = true) {
+  const colors = Array.from(blips).map(blip => {
+    if (blip.classList.contains("green")) return "green";
+    if (blip.classList.contains("red")) return "red";
+    return null;
+  });
+
+  const allFilled = colors.length === 5 &&
+    colors.every(color => color === "green" || color === "red");
+
+  if (!allFilled) return;
+
+  if (!currentUser) {
+    console.info("Today's blips are complete. Sign in to sync the score across devices.");
+    return;
+  }
+
+  const greenCount = colors.filter(color => color === "green").length;
+
+  const { error } = await db
+    .from("daily_blip_history")
+    .upsert(
+      {
+        user_id: currentUser.id,
+        study_date: getTodayKey(),
+        green_count: greenCount,
+        total_blips: 5
+      },
+      {
+        onConflict: "user_id,study_date",
+        ignoreDuplicates: true
+      }
+    );
+
+  if (error) {
+    console.error("Could not save daily result:", error);
+    return;
+  }
+
+  if (refreshHistory) await loadDailyHistory();
+}
+
+
+// Update the progress label
+function updateBlipLabel() {
+  blipContainer.setAttribute(
+    "aria-label",
+    `Progress: ${blipIndex} of ${blips.length}`
+  );
+}
+
+
 
 function launchConfetti() {
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const colors = [
+    "#ff6b6b",
+    "#ffd166",
+    "#06d6a0",
+    "#4dabf7",
+    "#c77dff",
+    "#ff8fab"
+  ];
 
-  if (reducedMotion) return;
+  const pieceCount = 400;
+  const spawnInterval = 15; // Milliseconds between pieces
 
-  const colors = ["#35c76f", "#d7b98e", "#ef5350", "#ffab40", "#7eafff"];
+  for (let i = 0; i < pieceCount; i++) {
+    setTimeout(() => {
+      const piece = document.createElement("div");
 
-  for (let index = 0; index < 55; index++) {
-    const piece = document.createElement("div");
-    piece.className = "confetti-piece";
-    piece.style.left = `${Math.random() * 100}vw`;
-    piece.style.backgroundColor = colors[index % colors.length];
-    piece.style.setProperty("--drift", `${Math.random() * 220 - 110}px`);
-    piece.style.setProperty("--rotation", `${Math.random() * 1080}deg`);
-    piece.style.animationDelay = `${Math.random() * 0.7}s`;
-    document.body.appendChild(piece);
+      piece.className = "confetti-piece";
+      piece.style.left = `${Math.random() * 100}vw`;
+      piece.style.backgroundColor =
+        colors[Math.floor(Math.random() * colors.length)];
 
-    piece.addEventListener("animationend", () => piece.remove(), { once: true });
+      piece.style.setProperty(
+        "--drift",
+        `${Math.random() * 240 - 120}px`
+      );
+
+      piece.style.setProperty(
+        "--rotation",
+        `${Math.random() * 1440 - 720}deg`
+      );
+
+      document.body.appendChild(piece);
+
+      setTimeout(() => {
+        piece.remove();
+      }, 4000);
+    }, i * spawnInterval);
   }
 }
 
-prepareBlipElements();
-initializeApp();
+
+
+// Mark the next empty blip and save it
+function markBlip(color) {
+  if (blipIndex >= blips.length) return;
+
+  blips[blipIndex].classList.add(color);
+  blipIndex++;
+
+  const colors = Array.from(blips).map(blip => {
+    if (blip.classList.contains("green")) return "green";
+    if (blip.classList.contains("red")) return "red";
+    return null;
+  });
+
+
+  localStorage.setItem(
+    BLIP_STORAGE_KEY,
+    JSON.stringify({
+      date: getTodayKey(),
+      colors: colors
+    })
+  );
+
+  updateBlipLabel();
+
+  const allBlipsFilled = colors.every(
+    color => color === "green" || color === "red"
+  );
+
+  const greenCount = colors.filter(
+    color => color === "green"
+  ).length;
+
+  if (allBlipsFilled) {
+    // Save every completed day, including scores below 3.
+    // Low scores are needed to record streak breaks.
+    saveDailyResultIfComplete();
+
+    // Preserve your existing confetti rule.
+    if (greenCount >= 3) {
+      launchConfetti();
+    }
+  }
+}
+
+
+
+correctButton.addEventListener("click", () => {
+  markBlip("green");
+});
+
+incorrectButton.addEventListener("click", () => {
+  markBlip("red");
+});
+
+resetBlipsButton.addEventListener("click", () => {
+  // Clear all blip colors
+  blips.forEach(blip => {
+    blip.classList.remove("green", "red");
+  });
+
+  // Reset the progress counter
+  blipIndex = 0;
+
+  // Save the empty state for today
+  localStorage.setItem(
+    BLIP_STORAGE_KEY,
+    JSON.stringify({
+      date: getTodayKey(),
+      colors: []
+    })
+  );
+
+  // Update the accessibility label
+  updateBlipLabel();
+});
+
+// Restore saved progress when the app loads
+restoreBlips();
+
+startApp();
