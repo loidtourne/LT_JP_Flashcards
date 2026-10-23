@@ -694,8 +694,7 @@ setInterval(async () => {
   dailySaveInProgress = false;
 
   if (currentUser) {
-    await loadDailyHistory();
-    await loadTodaysResult();
+  await loadDailyHistory();
   } else {
     clearBlipsDisplay();
     setDailyStatus("A new day has started. Sign in to save your daily study result.");
