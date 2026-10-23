@@ -412,30 +412,17 @@ function getDateOffset(dateString, offset) {
 }
 
 function calculateStreaks(history) {
-  const byDate = new Map(history.map(day => [day.study_date, day]));
-  const today = getTodayKey();
-  const todayRecord = byDate.get(today);
-
-  let currentStreak = 0;
-  let cursor = today;
-
-  if (!todayRecord) {
-    cursor = getDateOffset(today, -1);
-  } else if (!todayRecord.qualifies) {
-    cursor = null;
-  }
-
-  while (cursor && byDate.get(cursor)?.qualifies) {
-    currentStreak++;
-    cursor = getDateOffset(cursor, -1);
-  }
+  const byDate = new Map(
+    history.map(day => [day.study_date, day])
+  );
 
   const sorted = [...history].sort((a, b) =>
     a.study_date.localeCompare(b.study_date)
   );
 
-  let running = 0;
+  let currentStreak = 0;
   let bestStreak = 0;
+  let running = 0;
   let previousDate = null;
 
   for (const day of sorted) {
@@ -445,7 +432,10 @@ function calculateStreaks(history) {
       continue;
     }
 
-    if (previousDate && getDateOffset(previousDate, 1) === day.study_date) {
+    if (
+      previousDate &&
+      getDateOffset(previousDate, 1) === day.study_date
+    ) {
       running++;
     } else {
       running = 1;
@@ -453,6 +443,18 @@ function calculateStreaks(history) {
 
     bestStreak = Math.max(bestStreak, running);
     previousDate = day.study_date;
+  }
+
+  // Start from the latest recorded date, not today's date.
+  const latestDate = sorted.length
+    ? sorted[sorted.length - 1].study_date
+    : null;
+
+  let cursor = latestDate;
+
+  while (cursor && byDate.get(cursor)?.qualifies) {
+    currentStreak++;
+    cursor = getDateOffset(cursor, -1);
   }
 
   return { currentStreak, bestStreak };
