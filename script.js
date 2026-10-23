@@ -223,11 +223,7 @@ async function syncSession(session) {
     await loadTodaysResult({
       preserveUnsubmittedProgress: true
     });
-
-    if (!dailyCompleted && areAllBlipsFilled()) {
-      await saveDailyResultIfComplete(false);
-      await loadTodaysResult();
-    }
+    
   } else {
     dailyCompleted = false;
     clearBlipsDisplay();
