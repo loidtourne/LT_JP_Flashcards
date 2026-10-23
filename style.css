@@ -509,7 +509,7 @@ footer {
 
 /* Current Combo: dark gray until today's session qualifies */
 .streak-summary > .current-combo-card {
-  background: #242424;
+  background: #191919;
   color: var(--text);
   transition: background 0.3s ease, color 0.3s ease;
 }
