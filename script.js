@@ -344,6 +344,7 @@ async function startApp() {
   }
 
 
+
 db.auth.onAuthStateChange((event, session) => {
   console.log("AUTH EVENT:", event, new Date().toISOString());
 
@@ -355,6 +356,10 @@ db.auth.onAuthStateChange((event, session) => {
     console.log("SYNC FINISHED:", new Date().toISOString());
   }, 0);
 });
+
+await loadCards();
+}
+
 
 const blips = document.querySelectorAll(".blip");
 const blipContainer = document.getElementById("blips");
