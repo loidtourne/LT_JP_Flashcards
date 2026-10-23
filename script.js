@@ -343,17 +343,18 @@ async function startApp() {
     await syncSession(data.session);
   }
 
-db.auth.onAuthStateChange((event, session) => {
-  console.log("AUTH EVENT:", event);
 
-  setTimeout(() => {
-    syncSession(session);
+db.auth.onAuthStateChange((event, session) => {
+  console.log("AUTH EVENT:", event, new Date().toISOString());
+
+  setTimeout(async () => {
+    console.log("SYNC START:", new Date().toISOString());
+
+    await syncSession(session);
+
+    console.log("SYNC FINISHED:", new Date().toISOString());
   }, 0);
 });
-  await loadCards();
-}
-
-
 
 const blips = document.querySelectorAll(".blip");
 const blipContainer = document.getElementById("blips");
