@@ -547,6 +547,8 @@ function renderMilestones(bestStreak) {
 }
 
 async function saveDailyResultIfComplete(refreshHistory = true) {
+  console.log("SAVE FUNCTION ENTERED", new Date().toISOString());
+  console.trace("SAVE FUNCTION CALLER");
   console.trace("saveDailyResultIfComplete called");
   
   if (dailyCompleted || dailySaveInProgress || !areAllBlipsFilled()) return;
