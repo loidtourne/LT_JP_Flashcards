@@ -3,99 +3,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#191919">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Japanese Flashcards</title>
-
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
   <main class="app">
-    <header class="app-header">
-      <h1>Japanese Flashcards</h1>
-      <p id="appStatus" role="status" aria-live="polite">
-        Connecting to Supabase…
-      </p>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">JAPANESE STUDY</p>
+        <h1>Flashcards</h1>
+      </div>
+      <button id="authButton" class="subtle-button">Sign in</button>
     </header>
 
-    <section id="authSection" aria-labelledby="authHeading" hidden>
-      <h2 id="authHeading">Sign in</h2>
-      <form id="signInForm">
+    <section id="loginPanel" class="panel" hidden>
+      <h2>Owner sign in</h2>
+      <p>Sign in to add vocabulary to your collection.</p>
+      <form id="loginForm">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="email" required>
-
+        <input id="email" type="email" autocomplete="username"
+               required>
         <label for="password">Password</label>
         <input id="password" type="password"
-          autocomplete="current-password" required>
-
-        <button type="submit">Sign in</button>
+               autocomplete="current-password" required>
+        <button type="submit" class="primary">Sign in</button>
       </form>
+      <p id="loginMessage" class="message" role="status"></p>
     </section>
 
-    <section id="studySection" hidden>
-      <section id="streakSection" aria-labelledby="streakHeading">
-        <h2 id="streakHeading">Study streaks</h2>
-        <p>Current combo: <strong id="currentStreak">0</strong></p>
-        <p>Highest combo: <strong id="highestStreak">0</strong></p>
-      </section>
+    <section class="study">
+      <div class="card-count">
+        <span>YOUR VOCABULARY</span>
+        <span id="cardCount">Loading cards…</span>
+      </div>
 
-      <section id="flashcardSection" aria-labelledby="flashcardHeading">
-        <h2 id="flashcardHeading">Flashcards</h2>
-        <p id="cardCounter">Loading cards…</p>
+      <button id="flashcard" class="flashcard"
+              aria-label="Flip flashcard" aria-pressed="false">
+        <span class="card-face card-front">
+          <span class="face-label">KANJI</span>
+          <span id="kanji" class="kanji">日本語</span>
+          <span class="hint">Click to reveal answer</span>
+        </span>
+        <span class="card-face card-back">
+          <span class="face-label">READING & MEANING</span>
+          <span id="hiragana" class="hiragana">にほんご</span>
+          <span id="romaji" class="romaji">nihongo</span>
+          <span id="class" class="class">noun</span>
+          <span id="english" class="english">English</span>
+          <span class="answer-divider"></span>
+          <span id="definition" class="definition">Japanese language</span>
+          <span class="hint">Click to return to Kanji</span>
+        </span>
+      </button>
 
-        <article id="flashcard" class="flashcard">
-          <div class="flashcard-inner">
-            <div class="flashcard-front">
-              <p id="cardKanji"></p>
-              <p id="cardHiragana"></p>
-              <p id="cardRomaji"></p>
-              <p id="cardClass"></p>
-            </div>
+      <p id="status" class="message" role="status"
+         aria-live="polite">Connecting to vocabulary database…</p>
 
-            <div class="flashcard-back">
-              <p id="cardEnglish"></p>
-              <p id="cardDefinition"></p>
-            </div>
-          </div>
-        </article>
-
-        <div class="card-controls">
-          <button id="flipCardButton" type="button">Flip card</button>
-          <button id="nextCardButton" type="button">Next card</button>
+      <div class="blip-tracker">
+        <div id="blips" class="blips" aria-label="Progress: 0 of 5">
+          <span class="blip"></span>
+          <span class="blip"></span>
+          <span class="blip"></span>
+          <span class="blip"></span>
+          <span class="blip"></span>
         </div>
-      </section>
-
-      <section id="blipSection" aria-labelledby="blipHeading">
-        <h2 id="blipHeading">Daily blips</h2>
-        <p id="blipCount">0 of 5 completed</p>
-
-        <div id="blipDots" aria-label="Daily blip progress">
-          <span class="blip-dot" data-blip="0"></span>
-          <span class="blip-dot" data-blip="1"></span>
-          <span class="blip-dot" data-blip="2"></span>
-          <span class="blip-dot" data-blip="3"></span>
-          <span class="blip-dot" data-blip="4"></span>
+      
+        <div class="blip-buttons">
+          <button id="correctButton" class="blip-button correct"
+                  type="button" aria-label="Mark correct">
+            ✓
+          </button>
+          <button id="incorrectButton" class="blip-button incorrect"
+                  type="button" aria-label="Mark incorrect">
+            ✕
+          </button>
+          <button id="resetBlipsButton" class="reset-blips-button" type="button">
+                  Reset Blips
+          </button>
         </div>
+      </div>
 
-        <div class="blip-controls">
-          <button id="greenBlipButton" type="button">Green blip</button>
-          <button id="redBlipButton" type="button">Red blip</button>
-          <button id="resetBlipsButton" type="button">Reset today's blips</button>
-        </div>
+      
 
-        <p id="blipStatus" role="status" aria-live="polite"></p>
+<section class="streak-panel" aria-labelledby="streakHeading">
+  <h2 id="streakHeading">Study Streak</h2>
+
+  <div class="streak-summary">
+    <div class="current-combo-card">
+      <span class="streak-label">CURRENT COMBO</span>
+      <strong id="currentStreak">0 days</strong>
+    </div>
+
+    <div>
+      <span class="streak-label">HIGHEST STREAK</span>
+      <strong id="bestStreak">0 days</strong>
+    </div>
+  </div>
+
+  <div id="streakMilestones" class="streak-milestones"></div>
+</section>
+
+
+
+      
+      <button id="randomButton" class="primary full-width">
+        ↻ &nbsp; Random Card
+      </button>
+
+      <button id="addButton" class="secondary full-width"
+              hidden>＋ &nbsp; Add New Card</button>
+
+      <section id="addPanel" class="panel" hidden>
+        <h2>Add vocabulary</h2>
+        <form id="addForm">
+          <label for="newKanji">Kanji</label>
+          <input id="newKanji" maxlength="100"
+                 placeholder="猫" required>
+
+          <label for="newHiragana">Hiragana</label>
+          <input id="newHiragana" maxlength="100"
+                 placeholder="ねこ" required>
+
+          <label for="newRomaji">Romaji</label>
+          <input id="newRomaji" maxlength="100"
+                 placeholder="neko" required>
+
+          <label for="newClass">Class</label>
+          <input id="newClass" maxlenth="100"
+                placeholder="noun" required>
+
+          <label for="newEnglish">English</label>
+          <input id="newEnglish" maxlength="100"
+                placeholder="Cat" required>
+
+          <label for="newDefinition">Definition</label>
+          <textarea id="newDefinition" maxlength="500"
+                    placeholder="Cat" required></textarea>
+
+          <button type="submit" class="primary full-width">
+            Save Card
+          </button>
+          <button type="button" id="cancelAdd"
+                  class="secondary full-width">Cancel</button>
+        </form>
+        <p id="saveMessage" class="message" role="status"></p>
       </section>
 
-      <section id="historySection" aria-labelledby="historyHeading">
-        <h2 id="historyHeading">Daily history</h2>
-        <div id="dailyHistory"></div>
-      </section>
-
-      <button id="signOutButton" type="button">Sign out</button>
+      <footer>
+        <span id="accountStatus">Study mode</span>
+        <span>Japanese vocabulary</span>
+      </footer>
     </section>
   </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js"></script>
 </body>
 </html>
