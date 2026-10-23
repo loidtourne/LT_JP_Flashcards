@@ -149,8 +149,6 @@ async function loadDailyHistory() {
   currentStreakElement.textContent =
     `🔥 ${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
   currentStreakElement.classList.toggle("active-combo", currentStreak > 0);
-  currentStreakElement.closest(".current-combo-card")
-  .classList.toggle("active-combo", currentStreak > 0);
 
   $("bestStreak").textContent =
     `${bestStreak} day${bestStreak === 1 ? "" : "s"}`;
@@ -170,12 +168,23 @@ async function syncSession(session) {
   $("loginPanel").hidden = true;
   updateInterface();
 
+  await loadDailyHistory();
+
   if (currentUser) {
-    // Load history first, then save today's result if it is complete.
-    await loadDailyHistory();
-    await saveDailyResultIfComplete();
+    // Supabase decides whether today is already complete.
+    // Preserve a complete in-memory session so it can be saved if the user
+    // signs in after finishing the five blips.
+    await loadTodaysResult({ preserveUnsubmittedProgress: true });
+
+    if (!dailyCompleted && areAllBlipsFilled()) {
+      await saveDailyResultIfComplete(false);
+      await loadTodaysResult();
+    }
   } else {
-    await loadDailyHistory();
+    dailyCompleted = false;
+    clearBlipsDisplay();
+    setDailyStatus("Sign in to save your daily study result across devices.");
+    updateDailyControls();
   }
 }
 
@@ -353,56 +362,118 @@ const blipContainer = document.getElementById("blips");
 const correctButton = document.getElementById("correctButton");
 const incorrectButton = document.getElementById("incorrectButton");
 
-const BLIP_STORAGE_KEY = "japaneseFlashcardBlips";
-
 let blipIndex = 0;
+let dailyCompleted = false;
+let dailySaveInProgress = false;
+let todayStatusElement = null;
+let lastBlipDate = getTodayKey();
 
-// Get today's local date, such as 2026-10-20
+// Get today's local date, such as 2026-10-20.
 function getTodayKey() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 }
 
-// Restore today's saved blips
-function restoreBlips() {
-  let saved = {};
+function ensureDailyStatusElement() {
+  if (todayStatusElement) return todayStatusElement;
 
-  try {
-    saved = JSON.parse(
-      localStorage.getItem(BLIP_STORAGE_KEY) || "{}"
-    );
-  } catch (error) {
-    console.error("Could not restore saved blips:", error);
-  }
+  todayStatusElement = document.createElement("p");
+  todayStatusElement.id = "dailyBlipStatus";
+  todayStatusElement.setAttribute("role", "status");
+  todayStatusElement.setAttribute("aria-live", "polite");
+  todayStatusElement.style.marginTop = "0.5rem";
+  todayStatusElement.style.fontWeight = "600";
+  blipContainer.insertAdjacentElement("afterend", todayStatusElement);
+  return todayStatusElement;
+}
 
-  blips.forEach(blip => {
-    blip.classList.remove("green", "red");
+function setDailyStatus(message, isError = false) {
+  const element = ensureDailyStatusElement();
+  element.textContent = message;
+  element.style.color = isError ? "#ff9b9b" : "";
+}
+
+function getDisplayedBlipColors() {
+  return Array.from(blips).map(blip => {
+    if (blip.classList.contains("green")) return "green";
+    if (blip.classList.contains("red")) return "red";
+    return null;
   });
+}
 
+function areAllBlipsFilled() {
+  const colors = getDisplayedBlipColors();
+  return colors.length === 5 &&
+    colors.every(color => color === "green" || color === "red");
+}
+
+function clearBlipsDisplay() {
+  blips.forEach(blip => blip.classList.remove("green", "red"));
   blipIndex = 0;
-
-  if (saved.date !== getTodayKey()) {
-    localStorage.setItem(
-      BLIP_STORAGE_KEY,
-      JSON.stringify({ date: getTodayKey(), colors: [] })
-    );
-    updateBlipLabel();
-    return;
-  }
-
-  const colors = Array.isArray(saved.colors) ? saved.colors : [];
-
-  for (let i = 0; i < Math.min(colors.length, blips.length); i++) {
-    if (colors[i] !== "green" && colors[i] !== "red") break;
-    blips[i].classList.add(colors[i]);
-    blipIndex++;
-  }
-
   updateBlipLabel();
+  updateDailyControls();
+}
+
+function updateDailyControls() {
+  const locked = dailyCompleted || dailySaveInProgress || blipIndex >= blips.length;
+  correctButton.disabled = locked;
+  incorrectButton.disabled = locked;
+  if (resetBlipsButton) resetBlipsButton.disabled = dailyCompleted || dailySaveInProgress;
+}
+
+async function loadTodaysResult({ preserveUnsubmittedProgress = false } = {}) {
+  if (!currentUser) {
+    dailyCompleted = false;
+    clearBlipsDisplay();
+    setDailyStatus("Sign in to save your daily study result across devices.");
+    return null;
+  }
+
+  const currentColors = getDisplayedBlipColors();
+  const hasCompleteUnsubmittedProgress = preserveUnsubmittedProgress &&
+    currentColors.length === 5 &&
+    currentColors.every(color => color === "green" || color === "red");
+
+  const { data, error } = await db
+    .from("daily_blip_history")
+    .select("study_date, green_count, total_blips, qualifies")
+    .eq("user_id", currentUser.id)
+    .eq("study_date", getTodayKey())
+    .maybeSingle();
+
+  if (error) {
+    console.error("Could not load today's result:", error);
+    setDailyStatus("Couldn't load today's study result. Please refresh to try again.", true);
+    return null;
+  }
+
+  if (data) {
+    dailyCompleted = true;
+    blips.forEach(blip => blip.classList.remove("green", "red"));
+    blipIndex = 5;
+    updateBlipLabel();
+    const total = Number(data.total_blips || 5);
+    const greenCount = Number(data.green_count || 0);
+    setDailyStatus(`✓ Completed today — ${greenCount}/${total} correct.`);
+    updateDailyControls();
+    return data;
+  }
+
+  dailyCompleted = false;
+  if (!hasCompleteUnsubmittedProgress) {
+    clearBlipsDisplay();
+  } else {
+    blipIndex = 5;
+    updateBlipLabel();
+  }
+  setDailyStatus(hasCompleteUnsubmittedProgress
+    ? "All five blips are complete. Saving today's result…"
+    : "Today's study is ready. Complete all five blips to save your result.");
+  updateDailyControls();
+  return null;
 }
 
 function getDateOffset(dateString, offset) {
@@ -412,17 +483,30 @@ function getDateOffset(dateString, offset) {
 }
 
 function calculateStreaks(history) {
-  const byDate = new Map(
-    history.map(day => [day.study_date, day])
-  );
+  const byDate = new Map(history.map(day => [day.study_date, day]));
+  const today = getTodayKey();
+  const todayRecord = byDate.get(today);
+
+  let currentStreak = 0;
+  let cursor = today;
+
+  if (!todayRecord) {
+    cursor = getDateOffset(today, -1);
+  } else if (!todayRecord.qualifies) {
+    cursor = null;
+  }
+
+  while (cursor && byDate.get(cursor)?.qualifies) {
+    currentStreak++;
+    cursor = getDateOffset(cursor, -1);
+  }
 
   const sorted = [...history].sort((a, b) =>
     a.study_date.localeCompare(b.study_date)
   );
 
-  let currentStreak = 0;
-  let bestStreak = 0;
   let running = 0;
+  let bestStreak = 0;
   let previousDate = null;
 
   for (const day of sorted) {
@@ -432,10 +516,7 @@ function calculateStreaks(history) {
       continue;
     }
 
-    if (
-      previousDate &&
-      getDateOffset(previousDate, 1) === day.study_date
-    ) {
+    if (previousDate && getDateOffset(previousDate, 1) === day.study_date) {
       running++;
     } else {
       running = 1;
@@ -443,18 +524,6 @@ function calculateStreaks(history) {
 
     bestStreak = Math.max(bestStreak, running);
     previousDate = day.study_date;
-  }
-
-  // Start from the latest recorded date, not today's date.
-  const latestDate = sorted.length
-    ? sorted[sorted.length - 1].study_date
-    : null;
-
-  let cursor = latestDate;
-
-  while (cursor && byDate.get(cursor)?.qualifies) {
-    currentStreak++;
-    cursor = getDateOffset(cursor, -1);
   }
 
   return { currentStreak, bestStreak };
@@ -482,45 +551,47 @@ function renderMilestones(bestStreak) {
 }
 
 async function saveDailyResultIfComplete(refreshHistory = true) {
-  const colors = Array.from(blips).map(blip => {
-    if (blip.classList.contains("green")) return "green";
-    if (blip.classList.contains("red")) return "red";
-    return null;
-  });
-
-  const allFilled = colors.length === 5 &&
-    colors.every(color => color === "green" || color === "red");
-
-  if (!allFilled) return;
+  if (dailyCompleted || dailySaveInProgress || !areAllBlipsFilled()) return;
 
   if (!currentUser) {
-    console.info("Today's blips are complete. Sign in to sync the score across devices.");
+    setDailyStatus("All five blips are complete. Sign in to save today's result.");
+    updateDailyControls();
     return;
   }
 
+  const colors = getDisplayedBlipColors();
   const greenCount = colors.filter(color => color === "green").length;
+  dailySaveInProgress = true;
+  setDailyStatus("Saving today's result…");
+  updateDailyControls();
 
-  const { error } = await db
-    .from("daily_blip_history")
-    .upsert(
-      {
-        user_id: currentUser.id,
-        study_date: getTodayKey(),
-        green_count: greenCount,
-        total_blips: 5
-      },
-      {
-        onConflict: "user_id,study_date",
-        ignoreDuplicates: true
-      }
-    );
+  try {
+    const { error } = await db
+      .from("daily_blip_history")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          study_date: getTodayKey(),
+          green_count: greenCount,
+          total_blips: 5
+        },
+        {
+          onConflict: "user_id,study_date",
+          ignoreDuplicates: true
+        }
+      );
 
-  if (error) {
+    if (error) throw error;
+
+    dailySaveInProgress = false;
+    if (refreshHistory) await loadDailyHistory();
+    await loadTodaysResult();
+  } catch (error) {
     console.error("Could not save daily result:", error);
-    return;
+    dailySaveInProgress = false;
+    setDailyStatus("Couldn't save today's result. Use Reset Blips and try again.", true);
+    updateDailyControls();
   }
-
-  if (refreshHistory) await loadDailyHistory();
 }
 
 
@@ -577,47 +648,22 @@ function launchConfetti() {
 
 
 
-// Mark the next empty blip and save it
+// Mark the next empty blip and save the completed day's score to Supabase.
 function markBlip(color) {
-  if (blipIndex >= blips.length) return;
+  if (dailyCompleted || dailySaveInProgress || blipIndex >= blips.length) return;
+  if (color !== "green" && color !== "red") return;
 
   blips[blipIndex].classList.add(color);
   blipIndex++;
-
-  const colors = Array.from(blips).map(blip => {
-    if (blip.classList.contains("green")) return "green";
-    if (blip.classList.contains("red")) return "red";
-    return null;
-  });
-
-
-  localStorage.setItem(
-    BLIP_STORAGE_KEY,
-    JSON.stringify({
-      date: getTodayKey(),
-      colors: colors
-    })
-  );
-
   updateBlipLabel();
+  updateDailyControls();
 
-  const allBlipsFilled = colors.every(
-    color => color === "green" || color === "red"
-  );
-
-  const greenCount = colors.filter(
-    color => color === "green"
-  ).length;
-
-  if (allBlipsFilled) {
-    // Save every completed day, including scores below 3.
-    // Low scores are needed to record streak breaks.
+  if (areAllBlipsFilled()) {
+    const greenCount = getDisplayedBlipColors().filter(value => value === "green").length;
+    if (greenCount >= 3) launchConfetti();
     saveDailyResultIfComplete();
-
-    // Preserve your existing confetti rule.
-    if (greenCount >= 3) {
-      launchConfetti();
-    }
+  } else {
+    setDailyStatus(`Today's progress: ${blipIndex} of 5 blips completed.`);
   }
 }
 
@@ -632,56 +678,30 @@ incorrectButton.addEventListener("click", () => {
 });
 
 resetBlipsButton.addEventListener("click", () => {
-  blips.forEach(blip => {
-    blip.classList.remove("green", "red");
-  });
-
-  blipIndex = 0;
-
-  localStorage.setItem(
-    BLIP_STORAGE_KEY,
-    JSON.stringify({
-      date: getTodayKey(),
-      colors: []
-    })
-  );
-
-  updateBlipLabel();
+  // This clears only the current, unfinished display. It never deletes history.
+  if (dailyCompleted || dailySaveInProgress) return;
+  clearBlipsDisplay();
+  setDailyStatus("Today's unfinished progress was cleared.");
 });
 
-function resetBlipsForNewDay() {
-  blips.forEach(blip => {
-    blip.classList.remove("green", "red");
-  });
-
-  blipIndex = 0;
-
-  localStorage.setItem(
-    BLIP_STORAGE_KEY,
-    JSON.stringify({
-      date: getTodayKey(),
-      colors: []
-    })
-  );
-
-  updateBlipLabel();
-}
-
-let lastBlipDate = getTodayKey();
-
-function checkBlipDate() {
+// Refresh the daily display when the local date changes.
+setInterval(async () => {
   const today = getTodayKey();
+  if (today === lastBlipDate) return;
 
-  if (today !== lastBlipDate) {
-    lastBlipDate = today;
-    resetBlipsForNewDay();
+  lastBlipDate = today;
+  dailyCompleted = false;
+  dailySaveInProgress = false;
+
+  if (currentUser) {
+    await loadDailyHistory();
+    await loadTodaysResult();
+  } else {
+    clearBlipsDisplay();
+    setDailyStatus("A new day has started. Sign in to save your daily study result.");
   }
-}
+}, 15000);
 
-setInterval(checkBlipDate, 1000);
-
-
-// Restore saved progress when the app loads
-restoreBlips();
-
+updateBlipLabel();
+updateDailyControls();
 startApp();
