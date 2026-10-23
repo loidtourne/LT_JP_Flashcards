@@ -175,11 +175,7 @@ async function syncSession(session) {
     // Preserve a complete in-memory session so it can be saved if the user
     // signs in after finishing the five blips.
     await loadTodaysResult({ preserveUnsubmittedProgress: true });
-
-    if (!dailyCompleted && areAllBlipsFilled()) {
-      await saveDailyResultIfComplete(false);
-      await loadTodaysResult();
-    }
+    
   } else {
     dailyCompleted = false;
     clearBlipsDisplay();
