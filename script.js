@@ -681,20 +681,6 @@ function checkBlipDate() {
 setInterval(checkBlipDate, 1000);
 
 
-let lastBlipDate = getTodayKey();
-
-function checkBlipDate() {
-  const today = getTodayKey();
-
-  if (today !== lastBlipDate) {
-    lastBlipDate = today;
-    resetBlipsForNewDay();
-  }
-}
-
-setInterval(checkBlipDate, 1000);
-
-
 // Restore saved progress when the app loads
 restoreBlips();
 
