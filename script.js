@@ -632,15 +632,12 @@ incorrectButton.addEventListener("click", () => {
 });
 
 resetBlipsButton.addEventListener("click", () => {
-  // Clear all blip colors
   blips.forEach(blip => {
     blip.classList.remove("green", "red");
   });
 
-  // Reset the progress counter
   blipIndex = 0;
 
-  // Save the empty state for today
   localStorage.setItem(
     BLIP_STORAGE_KEY,
     JSON.stringify({
@@ -649,9 +646,54 @@ resetBlipsButton.addEventListener("click", () => {
     })
   );
 
-  // Update the accessibility label
   updateBlipLabel();
 });
+
+function resetBlipsForNewDay() {
+  blips.forEach(blip => {
+    blip.classList.remove("green", "red");
+  });
+
+  blipIndex = 0;
+
+  localStorage.setItem(
+    BLIP_STORAGE_KEY,
+    JSON.stringify({
+      date: getTodayKey(),
+      colors: []
+    })
+  );
+
+  updateBlipLabel();
+}
+
+let lastBlipDate = getTodayKey();
+
+function checkBlipDate() {
+  const today = getTodayKey();
+
+  if (today !== lastBlipDate) {
+    lastBlipDate = today;
+    resetBlipsForNewDay();
+  }
+}
+
+setInterval(checkBlipDate, 1000);
+
+
+let lastBlipDate = getTodayKey();
+
+function checkBlipDate() {
+  const today = getTodayKey();
+
+  if (today !== lastBlipDate) {
+    lastBlipDate = today;
+    resetBlipsForNewDay();
+  }
+}
+
+setInterval(checkBlipDate, 1000);
+
 
 // Restore saved progress when the app loads
 restoreBlips();
