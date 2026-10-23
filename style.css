@@ -507,9 +507,9 @@ footer {
 }
 
 
-/* Current Combo: black until today's session qualifies */
+/* Current Combo: dark gray until today's session qualifies */
 .streak-summary > .current-combo-card {
-  background: #000000;
+  background: #242424;
   color: var(--text);
   transition: background 0.3s ease, color 0.3s ease;
 }
@@ -517,10 +517,9 @@ footer {
 /* Activate the orange gradient after today's qualifying result is saved */
 .streak-summary > .current-combo-card.active-combo {
   background: linear-gradient(
-    180deg,
-    #e65100 0%,
-    #ff9800 50%,
-    #e65100 100%
+    90deg,
+    #fd6a37 50%,
+    #fee236 100%
   );
   color: #191919;
 }
