@@ -229,9 +229,7 @@ async function syncSession(session) {
     clearBlipsDisplay();
     setCurrentComboActive(false);
 
-    setDailyStatus(
-      "Sign in to save your daily study result across devices."
-    );
+    setDailyStatus("");
 
     updateDailyControls();
   }
