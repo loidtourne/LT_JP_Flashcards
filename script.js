@@ -548,6 +548,7 @@ function renderMilestones(bestStreak) {
   container.appendChild(badge);
 }
 
+
 async function saveDailyResultIfComplete(refreshHistory = true) {
   console.log("SAVE FUNCTION ENTERED", new Date().toISOString());
   console.trace("SAVE FUNCTION CALLER");
