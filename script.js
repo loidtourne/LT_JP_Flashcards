@@ -442,31 +442,6 @@ function getTodayKey() {
   return `${year}-${month}-${day}`;
 }
 
-function ensureDailyStatusElement() {
-  if (todayStatusElement) return todayStatusElement;
-
-  todayStatusElement = document.createElement("p");
-  todayStatusElement.id = "dailyBlipStatus";
-  todayStatusElement.setAttribute("role", "status");
-  todayStatusElement.setAttribute("aria-live", "polite");
-  todayStatusElement.style.marginTop = "0.5rem";
-  todayStatusElement.style.fontWeight = "600";
-
-  blipContainer.insertAdjacentElement(
-    "afterend",
-    todayStatusElement
-  );
-
-  return todayStatusElement;
-}
-
-function setDailyStatus(message, isError = false) {
-  const element = ensureDailyStatusElement();
-
-  element.textContent = message;
-  element.style.color = isError ? "#ff9b9b" : "";
-}
-
 function getDisplayedBlipColors() {
   return Array.from(blips).map(blip => {
     if (blip.classList.contains("green")) return "green";
