@@ -838,6 +838,16 @@ function markBlip(color) {
     }
 
     saveDailyResultIfComplete();
+    console.trace(
+  "[Daily History] Save function called",
+  {
+    dailyCompleted,
+    dailySaveInProgress,
+    allBlipsFilled: areAllBlipsFilled(),
+    currentUser: currentUser?.id,
+    date: getTodayKey()
+  }
+);
   } else {
     setDailyStatus(
       `Today's progress: ${blipIndex} of 5 blips completed.`
