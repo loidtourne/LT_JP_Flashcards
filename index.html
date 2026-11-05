@@ -1,9 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#191919">
   <title>Japanese Flashcards</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,19 +16,17 @@
         <p class="eyebrow">JAPANESE STUDY</p>
         <h1>Flashcards</h1>
       </div>
-      <button id="authButton" class="subtle-button">Sign in</button>
+      <button id="authButton" class="subtle-button" type="button">Sign in</button>
     </header>
 
     <section id="loginPanel" class="panel" hidden>
       <h2>Owner sign in</h2>
-      <p>Sign in to add vocabulary to your collection.</p>
+      <p>Sign in to add kanji and vocabulary to your collection.</p>
       <form id="loginForm">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="username"
-               required>
+        <input id="email" type="email" autocomplete="username" required>
         <label for="password">Password</label>
-        <input id="password" type="password"
-               autocomplete="current-password" required>
+        <input id="password" type="password" autocomplete="current-password" required>
         <button type="submit" class="primary">Sign in</button>
       </form>
       <p id="loginMessage" class="message" role="status"></p>
@@ -40,123 +38,100 @@
         <span id="cardCount">Loading cards…</span>
       </div>
 
-      <button id="flashcard" class="flashcard"
-              aria-label="Flip flashcard" aria-pressed="false">
-        <span class="card-face card-front">
+      <div id="flashcard" class="flashcard" role="group" tabindex="0"
+           aria-label="Flashcard. Press Enter or Space to flip.">
+        <div class="card-face card-front">
           <span class="face-label">KANJI</span>
           <span id="kanji" class="kanji">日本語</span>
-          <span class="hint">Click to reveal answer</span>
-        </span>
-        <span class="card-face card-back">
-          <span class="face-label">READING & MEANING</span>
-          <span id="hiragana" class="hiragana">にほんご</span>
-          <span id="romaji" class="romaji">nihongo</span>
-          <span id="class" class="class">noun</span>
-          <span id="english" class="english">English</span>
-          <span class="answer-divider"></span>
-          <span id="definition" class="definition">Japanese language</span>
-          <span class="hint">Click to return to Kanji</span>
-        </span>
-      </button>
-
-      <p id="status" class="message" role="status"
-         aria-live="polite">Connecting to vocabulary database…</p>
-
-      <div class="blip-tracker">
-        <div id="blips" class="blips" aria-label="Progress: 0 of 5">
-          <span class="blip"></span>
-          <span class="blip"></span>
-          <span class="blip"></span>
-          <span class="blip"></span>
-          <span class="blip"></span>
+          <span id="meaningFront" class="meaning-front">Japanese language</span>
+          <span class="hint">Click to reveal readings</span>
         </div>
-      
-        <div class="blip-buttons">
-          <button id="correctButton" class="blip-button correct"
-                  type="button" aria-label="Mark correct">
-            ✓
-          </button>
-          <button id="incorrectButton" class="blip-button incorrect"
-                  type="button" aria-label="Mark incorrect">
-            ✕
-          </button>
-          <button id="resetBlipsButton" class="reset-blips-button" type="button">
-                  Reset Blips
-          </button>
+        <div class="card-face card-back">
+          <span class="face-label">READINGS & VOCABULARY</span>
+          <div id="readingColumns" class="reading-columns">
+            <section class="reading-column">
+              <h3>On'yomi <span>音読み</span></h3>
+              <p class="empty-readings">—</p>
+            </section>
+            <section class="reading-column">
+              <h3>Kun'yomi <span>訓読み</span></h3>
+              <p class="empty-readings">—</p>
+            </section>
+          </div>
+          <span class="hint">Click outside an example section to return to Kanji</span>
         </div>
       </div>
 
-      
+      <p id="status" class="message" role="status" aria-live="polite">Connecting to vocabulary database…</p>
 
-<section class="streak-panel" aria-labelledby="streakHeading">
-  <h2 id="streakHeading">Study Streak</h2>
+      <div class="blip-tracker">
+        <div id="blips" class="blips" aria-label="Progress: 0 of 5">
+          <span class="blip"></span><span class="blip"></span><span class="blip"></span>
+          <span class="blip"></span><span class="blip"></span>
+        </div>
+        <div class="blip-buttons">
+          <button id="correctButton" class="blip-button correct" type="button" aria-label="Mark correct">✓</button>
+          <button id="incorrectButton" class="blip-button incorrect" type="button" aria-label="Mark incorrect">✕</button>
+          <button id="resetBlipsButton" class="reset-blips-button" type="button">Reset Blips</button>
+        </div>
+      </div>
 
-  <div class="streak-summary">
-    <div class="current-combo-card">
-      <span class="streak-label">CURRENT COMBO</span>
-      <strong id="currentStreak">0 days</strong>
-    </div>
+      <section class="streak-panel" aria-labelledby="streakHeading">
+        <h2 id="streakHeading">Study Streak</h2>
+        <div class="streak-summary">
+          <div class="current-combo-card">
+            <span class="streak-label">CURRENT COMBO</span>
+            <strong id="currentStreak">🔥 0 days</strong>
+          </div>
+          <div class="best-combo-card">
+            <span class="streak-label">BEST COMBO</span>
+            <strong id="bestStreak">0 days</strong>
+          </div>
+        </div>
+        <div id="streakMilestones" class="streak-milestones" hidden></div>
+      </section>
 
-    <div>
-      <span class="streak-label">HIGHEST STREAK</span>
-      <strong id="bestStreak">0 days</strong>
-    </div>
-  </div>
+      <button id="randomButton" class="primary full-width" type="button">↻ &nbsp; Random Card</button>
+      <button id="addButton" class="secondary full-width" type="button" hidden>＋ &nbsp; Add New Card</button>
 
-  <div id="streakMilestones" class="streak-milestones"></div>
-</section>
-
-
-
-      
-      <button id="randomButton" class="primary full-width">
-        ↻ &nbsp; Random Card
-      </button>
-
-      <button id="addButton" class="secondary full-width"
-              hidden>＋ &nbsp; Add New Card</button>
-
-      <section id="addPanel" class="panel" hidden>
-        <h2>Add vocabulary</h2>
+      <section id="addPanel" class="panel add-panel" hidden>
+        <h2>Add kanji</h2>
         <form id="addForm">
           <label for="newKanji">Kanji</label>
-          <input id="newKanji" maxlength="100"
-                 placeholder="猫" required>
+          <input id="newKanji" maxlength="100" placeholder="人" required>
+          <label for="newMeaning">Meaning</label>
+          <input id="newMeaning" maxlength="200" placeholder="Person" required>
 
-          <label for="newHiragana">Hiragana</label>
-          <input id="newHiragana" maxlength="100"
-                 placeholder="ねこ" required>
+          <div class="reading-form-heading">
+            <div>
+              <h3>On'yomi <span>音読み</span></h3>
+              <p>Add each On'yomi reading separately.</p>
+            </div>
+            <button type="button" class="small-secondary" data-add-reading="onyomi">＋ Add On'yomi</button>
+          </div>
+          <div id="onyomiEditors" class="reading-editors"></div>
 
-          <label for="newRomaji">Romaji</label>
-          <input id="newRomaji" maxlength="100"
-                 placeholder="neko" required>
+          <div class="reading-form-heading">
+            <div>
+              <h3>Kun'yomi <span>訓読み</span></h3>
+              <p>Add each Kun'yomi reading separately.</p>
+            </div>
+            <button type="button" class="small-secondary" data-add-reading="kunyomi">＋ Add Kun'yomi</button>
+          </div>
+          <div id="kunyomiEditors" class="reading-editors"></div>
 
-          <label for="newClass">Class</label>
-          <input id="newClass" maxlenth="100"
-                placeholder="noun" required>
-
-          <label for="newEnglish">English</label>
-          <input id="newEnglish" maxlength="100"
-                placeholder="Cat" required>
-
-          <label for="newDefinition">Definition</label>
-          <textarea id="newDefinition" maxlength="500"
-                    placeholder="Cat" required></textarea>
-
-          <button type="submit" class="primary full-width">
-            Save Card
-          </button>
-          <button type="button" id="cancelAdd"
-                  class="secondary full-width">Cancel</button>
+          <p class="form-note">Examples are optional. Each reading can have multiple vocabulary examples.</p>
+          <button type="submit" class="primary full-width">Save Kanji</button>
+          <button type="button" id="cancelAdd" class="secondary full-width">Cancel</button>
         </form>
-        <p id="saveMessage" class="message" role="status"></p>
-
-          <footer>
-          <span id="accountStatus">Study mode</span>
-          <span>Japanese vocabulary</span>
-        </footer>
+        <p id="saveMessage" class="message" role="status" aria-live="polite"></p>
       </section>
     </section>
+
+    <footer>
+      <span id="accountStatus">Study mode</span>
+      <span>Japanese vocabulary</span>
+    </footer>
   </main>
 </body>
 </html>
