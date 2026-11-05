@@ -1,8 +1,8 @@
 /* Japanese Flashcards — Supabase relational reading system. */
 
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
-const OWNER_EMAIL = "YOUR_OWNER_EMAIL";
+const SUPABASE_URL = "https://ckbasqdqtmxwrixcctca.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Gumosi4t5hmBCR_eiLLNNw_unIoQjo_";
+const OWNER_EMAIL = "loidtourne@gmail.com";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
