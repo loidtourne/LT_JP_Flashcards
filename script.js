@@ -1199,6 +1199,10 @@ function markBlip(color) {
   }
 }
 
+randomButton.addEventListener("click", () => {
+  chooseRandomCard();
+});
+
 correctButton.addEventListener("click", () => {
   markBlip("green");
   chooseRandomCard();
